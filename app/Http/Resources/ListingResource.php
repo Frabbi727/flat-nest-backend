@@ -18,7 +18,11 @@ class ListingResource extends JsonResource
             'district_id'    => $this->district_id,
             'upazila_id'     => $this->upazila_id,
             'union_id'       => $this->union_id,
-            'type'           => $this->type,
+            'listing_type'   => $this->whenLoaded('listingType', fn () => [
+                'id'    => $this->listingType->id,
+                'name'  => $this->listingType->name,
+                'label' => $this->listingType->label,
+            ]),
             'price'          => $this->price,
             'deposit'        => $this->deposit,
             'beds'           => $this->beds,

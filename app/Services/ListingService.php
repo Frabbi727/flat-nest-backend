@@ -43,10 +43,10 @@ class ListingService
     public function create(string $ownerId, array $data): Listing
     {
         $listing = $this->listings->create([
-            'owner_id'    => $ownerId,
-            'title'       => $data['title'],
-            'type'        => $data['type'],
-            'price'       => $data['price'],
+            'owner_id'        => $ownerId,
+            'listing_type_id' => $data['listing_type_id'],
+            'title'           => $data['title'],
+            'price'           => $data['price'],
             'deposit'     => $data['deposit'] ?? null,
             'beds'        => $data['beds'],
             'baths'       => $data['baths'],

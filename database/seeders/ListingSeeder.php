@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\ListingStatus;
 use App\Models\Amenity;
 use App\Models\Listing;
+use App\Models\ListingType;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -24,9 +25,11 @@ class ListingSeeder extends Seeder
             ]
         );
 
-        // Resolve amenity IDs by slug for the pivot sync
-        $ids = Amenity::whereIn('name', ['wifi', 'ac', 'parking', 'lift', 'generator', 'gas', 'gym'])
+        // Resolve amenity and listing type IDs
+        $amenityIds = Amenity::whereIn('name', ['wifi', 'ac', 'parking', 'lift', 'generator', 'gas', 'gym'])
             ->pluck('id', 'name');
+
+        $typeIds = ListingType::pluck('id', 'name');
 
         $listings = [
             ['title' => '3BHK Family Flat – Dhanmondi',    'area' => 'Dhanmondi',   'type' => 'Family',   'price' => 35000, 'beds' => 3, 'baths' => 2, 'amenities' => ['wifi', 'gas', 'lift']],
@@ -43,20 +46,20 @@ class ListingSeeder extends Seeder
 
         foreach ($listings as $data) {
             $listing = Listing::create([
-                'owner_id'    => $owner->id,
-                'title'       => $data['title'],
-                'area'        => $data['area'],
-                'type'        => $data['type'],
-                'price'       => $data['price'],
-                'beds'        => $data['beds'],
-                'baths'       => $data['baths'],
-                'status'      => ListingStatus::Active,
-                'description' => 'A great place to stay in ' . $data['area'] . '.',
+                'owner_id'        => $owner->id,
+                'listing_type_id' => $typeIds[$data['type']] ?? null,
+                'title'           => $data['title'],
+                'area'            => $data['area'],
+                'price'           => $data['price'],
+                'beds'            => $data['beds'],
+                'baths'           => $data['baths'],
+                'status'          => ListingStatus::Active,
+                'description'     => 'A great place to stay in ' . $data['area'] . '.',
             ]);
 
-            $amenityIds = collect($data['amenities'])->map(fn ($slug) => $ids[$slug] ?? null)->filter()->values()->all();
-            if ($amenityIds) {
-                $listing->amenities()->sync($amenityIds);
+            $syncIds = collect($data['amenities'])->map(fn ($slug) => $amenityIds[$slug] ?? null)->filter()->values()->all();
+            if ($syncIds) {
+                $listing->amenities()->sync($syncIds);
             }
         }
     }

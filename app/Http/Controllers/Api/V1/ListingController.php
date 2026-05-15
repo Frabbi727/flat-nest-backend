@@ -17,7 +17,7 @@ class ListingController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         return ListingResource::collection(
-            $this->listings->getFeed($request->only(['type', 'maxPrice', 'amenities']))
+            $this->listings->getFeed($request->only(['listing_type_id', 'maxPrice', 'amenities']))
         );
     }
 

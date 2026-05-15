@@ -20,7 +20,7 @@ class ListingsTable
                 TextColumn::make('title')->searchable()->limit(40),
                 TextColumn::make('owner.name')->label('Owner')->searchable(),
                 TextColumn::make('area')->searchable(),
-                TextColumn::make('type')->badge(),
+                TextColumn::make('listingType.name')->label('Type')->badge(),
                 TextColumn::make('price')->money('BDT')->sortable(),
                 TextColumn::make('beds')->numeric()->sortable(),
                 TextColumn::make('status')->badge()

@@ -11,9 +11,9 @@ class ListingRepository implements ListingRepositoryInterface
 {
     public function findActive(array $filters): Collection
     {
-        return Listing::with(['owner:id,name,phone', 'photos', 'amenities'])
+        return Listing::with(['owner:id,name,phone', 'photos', 'amenities', 'listingType'])
             ->where('status', ListingStatus::Active)
-            ->when($filters['type']     ?? null, fn ($q, $v) => $q->where('type', $v))
+            ->when($filters['listing_type_id'] ?? null, fn ($q, $v) => $q->where('listing_type_id', $v))
             ->when($filters['maxPrice'] ?? null, fn ($q, $v) => $q->where('price', '<=', $v))
             ->when($filters['amenities'] ?? null, function ($q, $amenities) {
                 foreach (explode(',', $amenities) as $id) {
@@ -26,12 +26,12 @@ class ListingRepository implements ListingRepositoryInterface
 
     public function findById(string $id): ?Listing
     {
-        return Listing::with(['owner:id,name,phone', 'photos', 'amenities'])->find($id);
+        return Listing::with(['owner:id,name,phone', 'photos', 'amenities', 'listingType'])->find($id);
     }
 
     public function findByOwner(string $ownerId): Collection
     {
-        return Listing::with(['photos', 'amenities'])
+        return Listing::with(['photos', 'amenities', 'listingType'])
             ->withCount('chats as inquiries')
             ->where('owner_id', $ownerId)
             ->latest()

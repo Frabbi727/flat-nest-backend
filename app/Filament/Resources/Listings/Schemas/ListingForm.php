@@ -23,7 +23,9 @@ class ListingForm
                 TextInput::make('area'),
                 TextInput::make('road_and_house')
                     ->default(null),
-                TextInput::make('type')
+                Select::make('listing_type_id')
+                    ->label('Type')
+                    ->relationship('listingType', 'label')
                     ->required(),
                 TextInput::make('price')
                     ->required()

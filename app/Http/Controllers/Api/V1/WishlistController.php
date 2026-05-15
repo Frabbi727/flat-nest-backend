@@ -3,36 +3,33 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Listing;
+use App\Services\WishlistService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class WishlistController extends Controller
 {
+    public function __construct(private readonly WishlistService $wishlist) {}
+
     public function index(Request $request): JsonResponse
     {
-        $savedIds = $request->user()->wishlist()->pluck('listings.id');
-
-        return response()->json(['saved_ids' => $savedIds]);
+        return response()->json(['saved_ids' => $this->wishlist->getSavedIds($request->user())]);
     }
 
     public function save(Request $request, string $listingId): JsonResponse
     {
-        $listing = Listing::find($listingId);
-
-        if (! $listing) {
-            return response()->json(['message' => 'Listing not found', 'code' => 'NOT_FOUND'], 404);
+        try {
+            $this->wishlist->save($request->user(), $listingId);
+            return response()->json(['message' => 'Saved']);
+        } catch (NotFoundHttpException $e) {
+            return response()->json(['message' => $e->getMessage(), 'code' => 'NOT_FOUND'], 404);
         }
-
-        $request->user()->wishlist()->syncWithoutDetaching([$listingId]);
-
-        return response()->json(['message' => 'Saved']);
     }
 
     public function remove(Request $request, string $listingId): JsonResponse
     {
-        $request->user()->wishlist()->detach($listingId);
-
+        $this->wishlist->remove($request->user(), $listingId);
         return response()->json(['message' => 'Removed']);
     }
 }

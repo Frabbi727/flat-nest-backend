@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Enums\ListingStatus;
+use App\Models\AppNotification;
 use App\Models\Listing;
 use App\Models\ListingPhoto;
 use Illuminate\Database\Eloquent\Collection;
@@ -75,8 +76,8 @@ class ListingService
         }
 
         $existingCount = $listing->photos()->count();
-
         $this->attachPhotos($listing, $photos, startPosition: $existingCount);
+        $this->revertToReviewIfActive($listing);
 
         return $listing->fresh(['owner:id,name,phone', 'photos']);
     }
@@ -89,7 +90,7 @@ class ListingService
             throw new NotFoundHttpException('Listing not found');
         }
 
-        return $this->listings->update($listing, [
+        $listing = $this->listings->update($listing, [
             'area'           => $data['area'],
             'division_id'    => $data['division_id'] ?? null,
             'district_id'    => $data['district_id'] ?? null,
@@ -99,6 +100,10 @@ class ListingService
             'coord_x'        => $data['coord_x'] ?? null,
             'coord_y'        => $data['coord_y'] ?? null,
         ]);
+
+        $this->revertToReviewIfActive($listing);
+
+        return $listing;
     }
 
     public function submit(string $listingId, string $ownerId): Listing
@@ -167,7 +172,26 @@ class ListingService
             $listing->amenities()->sync($amenityIds);
         }
 
+        $this->revertToReviewIfActive($listing);
+
         return $listing->load('amenities');
+    }
+
+    private function revertToReviewIfActive(Listing $listing): void
+    {
+        if ($listing->status !== ListingStatus::Active) {
+            return;
+        }
+
+        $this->listings->update($listing, ['status' => ListingStatus::Pending]);
+
+        AppNotification::create([
+            'user_id'      => $listing->owner_id,
+            'kind'         => 'listing',
+            'title'        => 'Your listing is under re-review.',
+            'body'         => 'You edited "' . $listing->title . '". It has been sent for re-approval and is temporarily hidden from the feed.',
+            'reference_id' => $listing->id,
+        ]);
     }
 
     public function delete(string $listingId, string $ownerId): void

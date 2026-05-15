@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ListingTypeController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\GeoController;
 use App\Http\Controllers\Api\V1\ListingController;
@@ -29,6 +30,9 @@ Route::prefix('v1')->group(function () {
 
     // Amenities — public read, protected write
     Route::get('/amenities', [AmenityController::class, 'index']);
+
+    // Listing types — public read, protected write
+    Route::get('/listing-types', [ListingTypeController::class, 'index']);
 
     // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
@@ -64,6 +68,11 @@ Route::prefix('v1')->group(function () {
         Route::post  ('/amenities',      [AmenityController::class, 'store']);
         Route::patch ('/amenities/{id}', [AmenityController::class, 'update']);
         Route::delete('/amenities/{id}', [AmenityController::class, 'destroy']);
+
+        // Listing types — write (admin/owner protected)
+        Route::post  ('/listing-types',      [ListingTypeController::class, 'store']);
+        Route::patch ('/listing-types/{id}', [ListingTypeController::class, 'update']);
+        Route::delete('/listing-types/{id}', [ListingTypeController::class, 'destroy']);
 
         // Notifications
         Route::get  ('/notifications',                  [NotificationController::class, 'index']);

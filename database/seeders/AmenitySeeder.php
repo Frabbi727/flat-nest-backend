@@ -27,8 +27,6 @@ class AmenitySeeder extends Seeder
 
     public function run(): void
     {
-        foreach (self::AMENITIES as $amenity) {
-            Amenity::firstOrCreate(['name' => $amenity['name']], ['label' => $amenity['label']]);
-        }
+        Amenity::upsert(self::AMENITIES, uniqueBy: ['name'], update: ['label']);
     }
 }

@@ -79,16 +79,26 @@ class AuthService
         $accessToken  = $user->createToken('access')->plainTextToken;
         $refreshToken = $this->issueRefreshToken($user);
 
-        return [
-            'user_id'           => $user->id,
-            'email'             => $user->email,
-            'name'              => $user->name,
-            'role'              => $user->role,
-            'is_complete'       => $user->is_complete,
-            'access_token'      => $accessToken,
-            'refresh_token'     => $refreshToken,
-            'registration_step' => $registrationStep,
+        $response = [
+            'access_token'  => $accessToken,
+            'refresh_token' => $refreshToken,
+            'user'          => [
+                'id'            => $user->id,
+                'name'          => $user->name,
+                'email'         => $user->email,
+                'phone'         => $user->phone,
+                'role'          => $user->role,
+                'date_of_birth' => $user->date_of_birth,
+                'avatar_url'    => $user->avatar_url,
+                'is_complete'   => $user->is_complete,
+            ],
         ];
+
+        if ($registrationStep !== null) {
+            $response['registration_step'] = $registrationStep;
+        }
+
+        return $response;
     }
 
     private function issueRefreshToken(User $user): string

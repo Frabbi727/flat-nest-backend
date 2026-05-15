@@ -13,7 +13,7 @@ class UpdateListingRequest extends FormRequest
         return [
             'title'       => 'sometimes|string|max:255',
             'area'        => 'sometimes|string',
-            'type'        => 'sometimes|in:Family,Bachelor,Student,Couple,Sublet',
+            'type'        => 'sometimes|string|exists:listing_types,name',
             'price'       => 'sometimes|integer|min:1',
             'beds'        => 'sometimes|integer|min:0',
             'baths'       => 'sometimes|integer|min:0',

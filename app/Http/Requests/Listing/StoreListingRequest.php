@@ -12,7 +12,7 @@ class StoreListingRequest extends FormRequest
     {
         return [
             'title'       => 'required|string|max:255',
-            'type'        => 'required|in:Family,Bachelor,Student,Couple,Sublet',
+            'type'        => 'required|string|exists:listing_types,name',
             'price'       => 'required|integer|min:1',
             'beds'        => 'required|integer|min:0',
             'baths'       => 'required|integer|min:0',

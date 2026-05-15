@@ -12,6 +12,10 @@ class ListingLocationRequest extends FormRequest
     {
         return [
             'area'           => 'required|string',
+            'division_id'    => 'nullable|integer|exists:divisions,id',
+            'district_id'    => 'nullable|integer|exists:districts,id',
+            'upazila_id'     => 'nullable|integer|exists:upazilas,id',
+            'union_id'       => 'nullable|integer|exists:unions,id',
             'road_and_house' => 'nullable|string',
             'coord_x'        => 'nullable|numeric',
             'coord_y'        => 'nullable|numeric',

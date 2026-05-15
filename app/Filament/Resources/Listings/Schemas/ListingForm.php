@@ -2,6 +2,10 @@
 
 namespace App\Filament\Resources\Listings\Schemas;
 
+use App\Enums\ListingStatus;
+use App\Models\Amenity;
+use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Schemas\Schema;
@@ -16,8 +20,7 @@ class ListingForm
                     ->required(),
                 TextInput::make('title')
                     ->required(),
-                TextInput::make('area')
-                    ->required(),
+                TextInput::make('area'),
                 TextInput::make('road_and_house')
                     ->default(null),
                 TextInput::make('type')
@@ -25,7 +28,7 @@ class ListingForm
                 TextInput::make('price')
                     ->required()
                     ->numeric()
-                    ->prefix('$'),
+                    ->prefix('৳'),
                 TextInput::make('deposit')
                     ->numeric()
                     ->default(null),
@@ -47,12 +50,16 @@ class ListingForm
                 TextInput::make('coord_y')
                     ->numeric()
                     ->default(null),
-                Textarea::make('amenities')
-                    ->default(null)
-                    ->columnSpanFull(),
-                TextInput::make('status')
+                Select::make('status')
+                    ->options(collect(ListingStatus::cases())->mapWithKeys(
+                        fn (ListingStatus $s) => [$s->value => $s->label()]
+                    ))
                     ->required()
-                    ->default('pending'),
+                    ->default(ListingStatus::Pending->value),
+                CheckboxList::make('amenities')
+                    ->relationship('amenities', 'label')
+                    ->columns(3)
+                    ->columnSpanFull(),
                 TextInput::make('views')
                     ->required()
                     ->numeric()

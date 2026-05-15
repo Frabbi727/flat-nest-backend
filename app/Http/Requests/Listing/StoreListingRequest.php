@@ -20,7 +20,7 @@ class StoreListingRequest extends FormRequest
             'size'        => 'nullable|integer|min:0',
             'description' => 'nullable|string',
             'amenities'   => 'nullable|array',
-            'amenities.*' => 'string',
+            'amenities.*' => 'integer|exists:amenities,id',
         ];
     }
 }

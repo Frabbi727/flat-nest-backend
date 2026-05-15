@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
+use App\Http\Controllers\Api\V1\GeoController;
 use App\Http\Controllers\Api\V1\ListingController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OwnerController;
@@ -19,6 +21,15 @@ Route::prefix('v1')->group(function () {
     Route::get('/listings',      [ListingController::class, 'index']);
     Route::get('/listings/{id}', [ListingController::class, 'show']);
 
+    // Geo — public
+    Route::get('/geo/divisions',               [GeoController::class, 'divisions']);
+    Route::get('/geo/districts/{division_id}', [GeoController::class, 'districts']);
+    Route::get('/geo/upazilas/{district_id}',  [GeoController::class, 'upazilas']);
+    Route::get('/geo/unions/{upazila_id}',     [GeoController::class, 'unions']);
+
+    // Amenities — public read, protected write
+    Route::get('/amenities', [AmenityController::class, 'index']);
+
     // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
 
@@ -34,10 +45,13 @@ Route::prefix('v1')->group(function () {
 
         // Owner
         Route::middleware('owner')->group(function () {
-            Route::get   ('/owner/listings',    [OwnerController::class, 'index']);
-            Route::post  ('/listings',          [OwnerController::class, 'store']);
-            Route::patch ('/listings/{id}',     [OwnerController::class, 'update']);
-            Route::delete('/listings/{id}',     [OwnerController::class, 'destroy']);
+            Route::get   ('/owner/listings',            [OwnerController::class, 'index']);
+            Route::post  ('/listings',                  [OwnerController::class, 'store']);
+            Route::post  ('/listings/{id}/photos',      [OwnerController::class, 'uploadPhotos']);
+            Route::patch ('/listings/{id}/location',    [OwnerController::class, 'updateLocation']);
+            Route::post  ('/listings/{id}/submit',      [OwnerController::class, 'submit']);
+            Route::patch ('/listings/{id}',             [OwnerController::class, 'update']);
+            Route::delete('/listings/{id}',             [OwnerController::class, 'destroy']);
         });
 
         // Chat
@@ -45,6 +59,11 @@ Route::prefix('v1')->group(function () {
         Route::post('/chats',                    [ChatController::class, 'start']);
         Route::get ('/chats/{id}/messages',      [ChatController::class, 'messages']);
         Route::post('/chats/{id}/messages',      [ChatController::class, 'sendMessage']);
+
+        // Amenities — write (admin/owner protected)
+        Route::post  ('/amenities',      [AmenityController::class, 'store']);
+        Route::patch ('/amenities/{id}', [AmenityController::class, 'update']);
+        Route::delete('/amenities/{id}', [AmenityController::class, 'destroy']);
 
         // Notifications
         Route::get  ('/notifications',                  [NotificationController::class, 'index']);

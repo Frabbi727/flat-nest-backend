@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources\Listings\Tables;
 
+use App\Enums\ListingStatus;
 use App\Models\AppNotification;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -24,13 +24,8 @@ class ListingsTable
                 TextColumn::make('price')->money('BDT')->sortable(),
                 TextColumn::make('beds')->numeric()->sortable(),
                 TextColumn::make('status')->badge()
-                    ->color(fn ($state) => match ($state) {
-                        'active'   => 'success',
-                        'pending'  => 'warning',
-                        'rejected' => 'danger',
-                        'rented'   => 'gray',
-                        default    => 'gray',
-                    }),
+                    ->formatStateUsing(fn (ListingStatus $state) => $state->label())
+                    ->color(fn (ListingStatus $state) => $state->color()),
                 TextColumn::make('views')->numeric()->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -40,9 +35,9 @@ class ListingsTable
                     ->label('Approve')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->visible(fn ($record) => $record->status === ListingStatus::Pending)
                     ->action(function ($record) {
-                        $record->update(['status' => 'active']);
+                        $record->update(['status' => ListingStatus::Active]);
                         AppNotification::create([
                             'user_id'      => $record->owner_id,
                             'kind'         => 'listing',
@@ -55,9 +50,9 @@ class ListingsTable
                     ->label('Reject')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn ($record) => $record->status === 'pending')
+                    ->visible(fn ($record) => $record->status === ListingStatus::Pending)
                     ->action(function ($record) {
-                        $record->update(['status' => 'rejected']);
+                        $record->update(['status' => ListingStatus::Rejected]);
                         AppNotification::create([
                             'user_id'      => $record->owner_id,
                             'kind'         => 'listing',

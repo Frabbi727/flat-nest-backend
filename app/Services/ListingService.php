@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\ListingRepositoryInterface;
+use App\Enums\ListingStatus;
 use App\Models\Listing;
 use App\Models\ListingPhoto;
 use Illuminate\Database\Eloquent\Collection;
@@ -10,6 +11,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 class ListingService
 {
@@ -30,7 +32,7 @@ class ListingService
 
         $this->listings->incrementViews($listing);
 
-        return $listing->fresh(['owner:id,name,phone', 'photos']);
+        return $listing->fresh(['owner:id,name,phone', 'photos', 'amenities']);
     }
 
     public function getOwnerDashboard(string $ownerId): Collection
@@ -40,7 +42,7 @@ class ListingService
 
     public function create(string $ownerId, array $data): Listing
     {
-        return $this->listings->create([
+        $listing = $this->listings->create([
             'owner_id'    => $ownerId,
             'title'       => $data['title'],
             'type'        => $data['type'],
@@ -50,9 +52,14 @@ class ListingService
             'baths'       => $data['baths'],
             'size'        => $data['size'] ?? null,
             'description' => $data['description'] ?? null,
-            'amenities'   => $data['amenities'] ?? [],
-            'status'      => 'draft',
+            'status'      => ListingStatus::Draft,
         ]);
+
+        if (! empty($data['amenities'])) {
+            $listing->amenities()->sync($data['amenities']);
+        }
+
+        return $listing;
     }
 
     public function addPhotos(string $listingId, string $ownerId, array $photos): Listing
@@ -84,6 +91,10 @@ class ListingService
 
         return $this->listings->update($listing, [
             'area'           => $data['area'],
+            'division_id'    => $data['division_id'] ?? null,
+            'district_id'    => $data['district_id'] ?? null,
+            'upazila_id'     => $data['upazila_id'] ?? null,
+            'union_id'       => $data['union_id'] ?? null,
             'road_and_house' => $data['road_and_house'] ?? null,
             'coord_x'        => $data['coord_x'] ?? null,
             'coord_y'        => $data['coord_y'] ?? null,
@@ -99,18 +110,18 @@ class ListingService
         }
 
         if (! $listing->area) {
-            throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+            throw new UnprocessableEntityHttpException(
                 'Location is required. Please complete Step 3 first.'
             );
         }
 
         if ($listing->photos()->count() === 0) {
-            throw new \Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException(
+            throw new UnprocessableEntityHttpException(
                 'At least one photo is required. Please complete Step 2 first.'
             );
         }
 
-        return $this->listings->update($listing, ['status' => 'pending']);
+        return $this->listings->update($listing, ['status' => ListingStatus::Pending]);
     }
 
     public function update(string $listingId, string $ownerId, array $data): Listing
@@ -121,7 +132,16 @@ class ListingService
             throw new NotFoundHttpException('Listing not found');
         }
 
-        return $this->listings->update($listing, $data);
+        $amenityIds = $data['amenities'] ?? null;
+        $fields     = array_diff_key($data, ['amenities' => null]);
+
+        $listing = $this->listings->update($listing, $fields);
+
+        if ($amenityIds !== null) {
+            $listing->amenities()->sync($amenityIds);
+        }
+
+        return $listing->load('amenities');
     }
 
     public function delete(string $listingId, string $ownerId): void

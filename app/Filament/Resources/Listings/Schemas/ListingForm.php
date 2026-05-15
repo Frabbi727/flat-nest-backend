@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Listings\Schemas;
 
 use App\Enums\ListingStatus;
-use App\Models\Amenity;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,7 +15,10 @@ class ListingForm
     {
         return $schema
             ->components([
-                TextInput::make('owner_id')
+                Select::make('owner_id')
+                    ->label('Owner')
+                    ->relationship('owner', 'name')
+                    ->searchable()
                     ->required(),
                 TextInput::make('title')
                     ->required(),

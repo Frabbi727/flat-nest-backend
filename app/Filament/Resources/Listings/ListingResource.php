@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Listings;
 
+use App\Enums\ListingStatus;
 use App\Filament\Resources\Listings\Pages\CreateListing;
 use App\Filament\Resources\Listings\Pages\EditListing;
 use App\Filament\Resources\Listings\Pages\ListListings;
@@ -18,7 +19,22 @@ class ListingResource extends Resource
 {
     protected static ?string $model = Listing::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
+
+    protected static ?string $navigationLabel = 'Listings';
+
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = Listing::where('status', ListingStatus::Pending)->count();
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): string
+    {
+        return 'warning';
+    }
 
     public static function form(Schema $schema): Schema
     {
@@ -32,17 +48,15 @@ class ListingResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ListListings::route('/'),
+            'index'  => ListListings::route('/'),
             'create' => CreateListing::route('/create'),
-            'edit' => EditListing::route('/{record}/edit'),
+            'edit'   => EditListing::route('/{record}/edit'),
         ];
     }
 }

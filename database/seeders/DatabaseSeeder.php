@@ -12,7 +12,7 @@ class DatabaseSeeder extends Seeder
             AdminSeeder::class,
             AmenitySeeder::class,
             ListingTypeSeeder::class,
-            ListingSeeder::class,
+           // ListingSeeder::class,
             DivisionCsvSeeder::class,
             DistrictCsvSeeder::class,
             UpazilaCsvSeeder::class,

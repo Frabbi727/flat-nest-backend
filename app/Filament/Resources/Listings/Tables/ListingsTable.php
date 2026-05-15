@@ -7,6 +7,7 @@ use App\Models\AppNotification;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -65,15 +66,24 @@ class ListingsTable
                     ->label('Reject')
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
-                    ->requiresConfirmation()
                     ->visible(fn ($record) => $record->status === ListingStatus::Pending)
-                    ->action(function ($record) {
-                        $record->update(['status' => ListingStatus::Rejected]);
+                    ->form([
+                        Textarea::make('rejection_reason')
+                            ->label('Reason for rejection')
+                            ->placeholder('e.g. Photos are blurry, price seems incorrect...')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $record->update([
+                            'status'           => ListingStatus::Rejected,
+                            'rejection_reason' => $data['rejection_reason'],
+                        ]);
                         AppNotification::create([
                             'user_id'      => $record->owner_id,
                             'kind'         => 'listing',
                             'title'        => 'Your listing was rejected.',
-                            'body'         => $record->title . ' was not approved. Contact support for details.',
+                            'body'         => $data['rejection_reason'],
                             'reference_id' => $record->id,
                         ]);
                     }),

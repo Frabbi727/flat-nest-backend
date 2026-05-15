@@ -32,8 +32,9 @@ class ListingResource extends JsonResource
             'amenities'      => $this->whenLoaded('amenities', fn () =>
                 $this->amenities->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'label' => $a->label])
             ),
-            'status'         => $this->status->value,
-            'status_label'   => $this->status->label(),
+            'status'           => $this->status->value,
+            'status_label'     => $this->status->label(),
+            'rejection_reason' => $this->rejection_reason,
             'views'          => $this->views,
             'coord_x'        => $this->coord_x,
             'coord_y'        => $this->coord_y,

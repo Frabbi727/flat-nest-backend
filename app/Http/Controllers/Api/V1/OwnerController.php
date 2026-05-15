@@ -85,6 +85,18 @@ class OwnerController extends Controller
         }
     }
 
+    public function markAsRented(Request $request, string $id): JsonResponse
+    {
+        try {
+            $this->listings->markAsRented($id, $request->user()->id);
+            return response()->json(['message' => 'Listing marked as rented.']);
+        } catch (NotFoundHttpException $e) {
+            return response()->json(['message' => $e->getMessage(), 'code' => 'NOT_FOUND'], 404);
+        } catch (\Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException $e) {
+            return response()->json(['message' => $e->getMessage(), 'code' => 'INVALID_STATUS'], 422);
+        }
+    }
+
     public function destroy(Request $request, string $id): JsonResponse
     {
         try {

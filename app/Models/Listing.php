@@ -19,7 +19,7 @@ class Listing extends Model
     protected $fillable = [
         'owner_id', 'listing_type_id', 'title', 'area', 'road_and_house',
         'price', 'deposit', 'beds', 'baths', 'size', 'description',
-        'coord_x', 'coord_y', 'status', 'views',
+        'coord_x', 'coord_y', 'status', 'rejection_reason', 'views',
         'division_id', 'district_id', 'upazila_id', 'union_id',
     ];
 

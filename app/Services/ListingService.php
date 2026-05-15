@@ -109,6 +109,12 @@ class ListingService
             throw new NotFoundHttpException('Listing not found');
         }
 
+        if (! in_array($listing->status, [ListingStatus::Draft, ListingStatus::Rejected])) {
+            throw new UnprocessableEntityHttpException(
+                'Only draft or rejected listings can be submitted.'
+            );
+        }
+
         if (! $listing->area) {
             throw new UnprocessableEntityHttpException(
                 'Location is required. Please complete Step 3 first.'
@@ -121,7 +127,27 @@ class ListingService
             );
         }
 
-        return $this->listings->update($listing, ['status' => ListingStatus::Pending]);
+        return $this->listings->update($listing, [
+            'status'           => ListingStatus::Pending,
+            'rejection_reason' => null,
+        ]);
+    }
+
+    public function markAsRented(string $listingId, string $ownerId): Listing
+    {
+        $listing = $this->listings->findById($listingId);
+
+        if (! $listing || $listing->owner_id !== $ownerId) {
+            throw new NotFoundHttpException('Listing not found');
+        }
+
+        if ($listing->status !== ListingStatus::Active) {
+            throw new UnprocessableEntityHttpException(
+                'Only active listings can be marked as rented.'
+            );
+        }
+
+        return $this->listings->update($listing, ['status' => ListingStatus::Rented]);
     }
 
     public function update(string $listingId, string $ownerId, array $data): Listing

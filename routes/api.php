@@ -54,6 +54,7 @@ Route::prefix('v1')->group(function () {
             Route::post  ('/listings/{id}/photos',      [OwnerController::class, 'uploadPhotos']);
             Route::patch ('/listings/{id}/location',    [OwnerController::class, 'updateLocation']);
             Route::post  ('/listings/{id}/submit',      [OwnerController::class, 'submit']);
+            Route::post  ('/listings/{id}/mark-rented', [OwnerController::class, 'markAsRented']);
             Route::patch ('/listings/{id}',             [OwnerController::class, 'update']);
             Route::delete('/listings/{id}',             [OwnerController::class, 'destroy']);
         });

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ListingStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class Listing extends Model
@@ -26,6 +27,9 @@ class Listing extends Model
     {
         parent::boot();
         static::creating(fn ($model) => $model->id = (string) Str::uuid());
+        static::deleting(fn (Listing $listing) =>
+            Storage::disk(config('filesystems.default'))->deleteDirectory('listings/' . $listing->id)
+        );
     }
 
     protected function casts(): array

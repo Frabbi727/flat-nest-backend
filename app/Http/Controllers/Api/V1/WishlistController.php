@@ -17,15 +17,9 @@ class WishlistController extends Controller
         return ApiResponse::success(['saved_ids' => $this->wishlist->getSavedIds($request->user())]);
     }
 
-    public function save(Request $request, string $listingId): JsonResponse
+    public function toggle(Request $request, string $listingId): JsonResponse
     {
-        $this->wishlist->save($request->user(), $listingId);
-        return ApiResponse::success(null, 'Saved');
-    }
-
-    public function remove(Request $request, string $listingId): JsonResponse
-    {
-        $this->wishlist->remove($request->user(), $listingId);
-        return ApiResponse::success(null, 'Removed');
+        $saved = $this->wishlist->toggle($request->user(), $listingId);
+        return ApiResponse::success(['saved' => $saved], $saved ? 'Saved' : 'Removed');
     }
 }

@@ -43,9 +43,8 @@ Route::prefix('v1')->group(function () {
         Route::patch('/auth/register/avatar',  [AuthController::class, 'registerAvatar']);
 
         // Wishlist
-        Route::get   ('/wishlist',                    [WishlistController::class, 'index']);
-        Route::post  ('/wishlist/{listing_id}',       [WishlistController::class, 'save']);
-        Route::delete('/wishlist/{listing_id}',       [WishlistController::class, 'remove']);
+        Route::get ('/wishlist',                         [WishlistController::class, 'index']);
+        Route::post('/wishlist/{listing_id}/toggle',     [WishlistController::class, 'toggle']);
 
         // Owner
         Route::middleware('owner')->group(function () {

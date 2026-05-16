@@ -14,17 +14,18 @@ class WishlistService
         return $user->wishlist()->pluck('listings.id');
     }
 
-    public function save(User $user, string $listingId): void
+    public function toggle(User $user, string $listingId): bool
     {
         if (! Listing::find($listingId)) {
             throw new NotFoundHttpException('Listing not found');
         }
 
-        $user->wishlist()->syncWithoutDetaching([$listingId]);
-    }
+        if ($user->wishlist()->where('listings.id', $listingId)->exists()) {
+            $user->wishlist()->detach($listingId);
+            return false; // removed
+        }
 
-    public function remove(User $user, string $listingId): void
-    {
-        $user->wishlist()->detach($listingId);
+        $user->wishlist()->attach($listingId);
+        return true; // saved
     }
 }

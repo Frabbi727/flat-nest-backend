@@ -30,7 +30,7 @@ class AuthService
     {
         return $this->users->update($user, [
             'role'          => $data['role'],
-            'date_of_birth' => $data['date_of_birth'],
+            'date_of_birth' => $data['date_of_birth'] ?? null,
         ]);
     }
 

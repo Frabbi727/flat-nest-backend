@@ -12,7 +12,7 @@ class RegisterDetailsRequest extends FormRequest
     {
         return [
             'role'          => 'required|in:renter,owner',
-            'date_of_birth' => 'required|date|before:-18 years',
+            'date_of_birth' => 'nullable|date|before:-18 years',
         ];
     }
 }

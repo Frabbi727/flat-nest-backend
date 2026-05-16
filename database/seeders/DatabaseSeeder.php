@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AdminSeeder::class,
             AmenitySeeder::class,
-            ListingTypeSeeder::class,
+         //   ListingTypeSeeder::class,
            // ListingSeeder::class,
             DivisionCsvSeeder::class,
             DistrictCsvSeeder::class,

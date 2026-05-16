@@ -90,7 +90,7 @@ class ListingService
             throw new NotFoundHttpException('Listing not found');
         }
 
-        $listing = $this->listings->update($listing, [
+        $fields = [
             'area'           => $data['area'],
             'division_id'    => $data['division_id'] ?? null,
             'district_id'    => $data['district_id'] ?? null,
@@ -99,9 +99,15 @@ class ListingService
             'road_and_house' => $data['road_and_house'] ?? null,
             'coord_x'        => $data['coord_x'] ?? null,
             'coord_y'        => $data['coord_y'] ?? null,
-        ]);
+        ];
 
-        $this->revertToReviewIfActive($listing);
+        $hasChanges = $this->hasFieldChanges($listing, $fields);
+
+        $listing = $this->listings->update($listing, $fields);
+
+        if ($hasChanges) {
+            $this->revertToReviewIfActive($listing);
+        }
 
         return $listing;
     }
@@ -166,15 +172,32 @@ class ListingService
         $amenityIds = $data['amenities'] ?? null;
         $fields     = array_diff_key($data, ['amenities' => null]);
 
+        $hasFieldChanges = $this->hasFieldChanges($listing, $fields);
+
         $listing = $this->listings->update($listing, $fields);
 
+        $amenityChanged = false;
         if ($amenityIds !== null) {
-            $listing->amenities()->sync($amenityIds);
+            $diff           = $listing->amenities()->sync($amenityIds);
+            $amenityChanged = count($diff['attached']) > 0 || count($diff['detached']) > 0;
         }
 
-        $this->revertToReviewIfActive($listing);
+        if ($hasFieldChanges || $amenityChanged) {
+            $this->revertToReviewIfActive($listing);
+        }
 
         return $listing->load('amenities');
+    }
+
+    private function hasFieldChanges(Listing $listing, array $fields): bool
+    {
+        foreach ($fields as $key => $value) {
+            // loose cast comparison so "23.7" == 23.7, null == null, etc.
+            if ((string) ($listing->$key ?? '') !== (string) ($value ?? '')) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function revertToReviewIfActive(Listing $listing): void

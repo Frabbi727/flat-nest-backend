@@ -15,7 +15,20 @@ class ListingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $paginator = $this->listings->getFeed($request->only(['listing_type_id', 'maxPrice', 'amenities']));
+        $filters = $request->only([
+            'search',
+            'division_id',
+            'district_id',
+            'upazila_id',
+            'union_id',
+            'listing_type_id',
+            'minPrice',
+            'maxPrice',
+            'beds',
+            'amenities',
+        ]);
+
+        $paginator = $this->listings->getFeed($filters);
         return ApiResponse::paginated(ListingResource::collection($paginator), $paginator);
     }
 

@@ -4,10 +4,11 @@ namespace App\Contracts\Repositories;
 
 use App\Models\Listing;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 interface ListingRepositoryInterface
 {
-    public function findActive(array $filters): Collection;
+    public function findActive(array $filters): LengthAwarePaginator;
     public function findById(string $id): ?Listing;
     public function findByOwner(string $ownerId): Collection;
     public function create(array $data): Listing;

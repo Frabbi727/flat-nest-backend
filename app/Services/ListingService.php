@@ -9,6 +9,7 @@ use App\Models\Listing;
 use App\Models\ListingPhoto;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -18,7 +19,7 @@ class ListingService
 {
     public function __construct(private readonly ListingRepositoryInterface $listings) {}
 
-    public function getFeed(array $filters): Collection
+    public function getFeed(array $filters): LengthAwarePaginator
     {
         return $this->listings->findActive($filters);
     }

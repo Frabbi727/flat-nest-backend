@@ -5,12 +5,13 @@ namespace App\Repositories;
 use App\Contracts\Repositories\NotificationRepositoryInterface;
 use App\Models\AppNotification;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class NotificationRepository implements NotificationRepositoryInterface
 {
-    public function forUser(string $userId): Collection
+    public function forUser(string $userId): LengthAwarePaginator
     {
-        return AppNotification::where('user_id', $userId)->latest()->get();
+        return AppNotification::where('user_id', $userId)->latest()->paginate(20);
     }
 
     public function findForUser(string $id, string $userId): ?AppNotification

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Helpers\ApiResponse;
 use App\Models\ListingType;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,7 +12,7 @@ class ListingTypeController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(ListingType::orderBy('label')->get(['id', 'name', 'label']));
+        return ApiResponse::success(ListingType::orderBy('label')->get(['id', 'name', 'label']));
     }
 
     public function store(Request $request): JsonResponse
@@ -21,7 +22,7 @@ class ListingTypeController extends Controller
             'label' => 'required|string',
         ]);
 
-        return response()->json(ListingType::create($data), 201);
+        return ApiResponse::success(ListingType::create($data), null, 201);
     }
 
     public function update(Request $request, int $id): JsonResponse
@@ -35,13 +36,13 @@ class ListingTypeController extends Controller
 
         $type->update($data);
 
-        return response()->json($type);
+        return ApiResponse::success($type);
     }
 
     public function destroy(int $id): JsonResponse
     {
         ListingType::findOrFail($id)->delete();
 
-        return response()->json(['message' => 'Type deleted']);
+        return ApiResponse::success(null, 'Type deleted');
     }
 }

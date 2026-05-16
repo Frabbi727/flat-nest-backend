@@ -4,14 +4,14 @@ namespace App\Services;
 
 use App\Contracts\Repositories\NotificationRepositoryInterface;
 use App\Models\AppNotification;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class NotificationService
 {
     public function __construct(private readonly NotificationRepositoryInterface $notifications) {}
 
-    public function getForUser(string $userId): Collection
+    public function getForUser(string $userId): LengthAwarePaginator
     {
         return $this->notifications->forUser($userId);
     }

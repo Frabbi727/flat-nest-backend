@@ -6,10 +6,11 @@ use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Enums\ListingStatus;
 use App\Models\Listing;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ListingRepository implements ListingRepositoryInterface
 {
-    public function findActive(array $filters): Collection
+    public function findActive(array $filters): LengthAwarePaginator
     {
         return Listing::with(['owner:id,name,phone', 'photos', 'amenities', 'listingType'])
             ->where('status', ListingStatus::Active)
@@ -21,7 +22,7 @@ class ListingRepository implements ListingRepositoryInterface
                 }
             })
             ->latest()
-            ->get();
+            ->paginate(15);
     }
 
     public function findById(string $id): ?Listing

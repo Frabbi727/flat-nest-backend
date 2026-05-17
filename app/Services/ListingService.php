@@ -7,7 +7,6 @@ use App\Enums\ListingStatus;
 use App\Models\AppNotification;
 use App\Models\Listing;
 use App\Models\ListingPhoto;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
@@ -34,12 +33,15 @@ class ListingService
 
         $this->listings->incrementViews($listing);
 
-        return $listing->fresh(['owner:id,name,phone', 'photos', 'amenities']);
+        return $listing->fresh([
+            'owner:id,name,phone', 'photos', 'amenities', 'listingType',
+            'facing', 'division', 'district', 'upazila', 'union',
+        ]);
     }
 
-    public function getOwnerDashboard(string $ownerId): Collection
+    public function getOwnerDashboard(string $ownerId, array $filters = []): LengthAwarePaginator
     {
-        return $this->listings->findByOwner($ownerId);
+        return $this->listings->findByOwner($ownerId, $filters);
     }
 
     public function create(string $ownerId, array $data): Listing
@@ -49,19 +51,22 @@ class ListingService
             'listing_type_id' => $data['listing_type_id'],
             'title'           => $data['title'],
             'price'           => $data['price'],
-            'deposit'     => $data['deposit'] ?? null,
-            'beds'        => $data['beds'],
-            'baths'       => $data['baths'],
-            'size'        => $data['size'] ?? null,
-            'description' => $data['description'] ?? null,
-            'status'      => ListingStatus::Draft,
+            'deposit'         => $data['deposit'] ?? null,
+            'beds'            => $data['beds'],
+            'baths'           => $data['baths'],
+            'size'            => $data['size'] ?? null,
+            'description'     => $data['description'] ?? null,
+            'available_from'  => $data['available_from'] ?? null,
+            'floor_no'        => $data['floor_no'] ?? null,
+            'facing_id'       => $data['facing_id'] ?? null,
+            'status'          => ListingStatus::Draft,
         ]);
 
         if (! empty($data['amenities'])) {
             $listing->amenities()->sync($data['amenities']);
         }
 
-        return $listing;
+        return $listing->load(['listingType', 'facing', 'photos']);
     }
 
     public function addPhotos(string $listingId, string $ownerId, array $photos): Listing
@@ -91,26 +96,22 @@ class ListingService
             throw new NotFoundHttpException('Listing not found');
         }
 
-        $fields = [
-            'area'           => $data['area'],
-            'division_id'    => $data['division_id'] ?? null,
-            'district_id'    => $data['district_id'] ?? null,
-            'upazila_id'     => $data['upazila_id'] ?? null,
-            'union_id'       => $data['union_id'] ?? null,
-            'road_and_house' => $data['road_and_house'] ?? null,
-            'coord_x'        => $data['coord_x'] ?? null,
-            'coord_y'        => $data['coord_y'] ?? null,
+        $locationKeys = [
+            'area', 'division_id', 'district_id', 'upazila_id', 'union_id',
+            'coord_x', 'coord_y', 'road', 'house_name', 'block', 'section',
         ];
+        $fields = array_intersect_key($data, array_flip($locationKeys));
 
         $hasChanges = $this->hasFieldChanges($listing, $fields);
 
-        $listing = $this->listings->update($listing, $fields);
+        $this->listings->update($listing, $fields);
+        $listing->refresh();
 
         if ($hasChanges) {
             $this->revertToReviewIfActive($listing);
         }
 
-        return $listing;
+        return $listing->load(['listingType', 'facing', 'division', 'district', 'upazila', 'union']);
     }
 
     public function submit(string $listingId, string $ownerId): Listing
@@ -124,12 +125,6 @@ class ListingService
         if (! in_array($listing->status, [ListingStatus::Draft, ListingStatus::Rejected])) {
             throw new UnprocessableEntityHttpException(
                 'Only draft or rejected listings can be submitted.'
-            );
-        }
-
-        if (! $listing->area) {
-            throw new UnprocessableEntityHttpException(
-                'Location is required. Please complete Step 3 first.'
             );
         }
 
@@ -171,11 +166,13 @@ class ListingService
         }
 
         $amenityIds = $data['amenities'] ?? null;
-        $fields     = array_diff_key($data, ['amenities' => null]);
 
-        $hasFieldChanges = $this->hasFieldChanges($listing, $fields);
+        $allFields = array_diff_key($data, ['amenities' => null]);
 
-        $listing = $this->listings->update($listing, $fields);
+        $hasFieldChanges = $this->hasFieldChanges($listing, $allFields);
+
+        $this->listings->update($listing, $allFields);
+        $listing->refresh();
 
         $amenityChanged = false;
         if ($amenityIds !== null) {
@@ -187,13 +184,39 @@ class ListingService
             $this->revertToReviewIfActive($listing);
         }
 
-        return $listing->load('amenities');
+        return $listing->load([
+            'listingType', 'facing', 'photos', 'amenities',
+            'division', 'district', 'upazila', 'union',
+        ]);
+    }
+
+    public function updateOwnerInfo(string $listingId, string $ownerId, array $data): Listing
+    {
+        $listing = $this->listings->findById($listingId);
+
+        if (! $listing || $listing->owner_id !== $ownerId) {
+            throw new NotFoundHttpException('Listing not found');
+        }
+
+        $this->listings->update($listing, $data);
+
+        return $listing->fresh();
+    }
+
+    public function delete(string $listingId, string $ownerId): void
+    {
+        $listing = $this->listings->findById($listingId);
+
+        if (! $listing || $listing->owner_id !== $ownerId) {
+            throw new NotFoundHttpException('Listing not found');
+        }
+
+        $this->listings->delete($listing);
     }
 
     private function hasFieldChanges(Listing $listing, array $fields): bool
     {
         foreach ($fields as $key => $value) {
-            // loose cast comparison so "23.7" == 23.7, null == null, etc.
             if ((string) ($listing->$key ?? '') !== (string) ($value ?? '')) {
                 return true;
             }
@@ -216,17 +239,6 @@ class ListingService
             'body'         => 'You edited "' . $listing->title . '". It has been sent for re-approval and is temporarily hidden from the feed.',
             'reference_id' => $listing->id,
         ]);
-    }
-
-    public function delete(string $listingId, string $ownerId): void
-    {
-        $listing = $this->listings->findById($listingId);
-
-        if (! $listing || $listing->owner_id !== $ownerId) {
-            throw new NotFoundHttpException('Listing not found');
-        }
-
-        $this->listings->delete($listing);
     }
 
     private function attachPhotos(Listing $listing, array $photos, int $startPosition = 0): void

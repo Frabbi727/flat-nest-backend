@@ -1,0 +1,551 @@
+I have a Laravel flat rental app. I need to implement multiple
+updates across database, models, controllers and routes.
+Read everything carefully before making any changes.
+
+═══════════════════════════════════════════════════
+CURRENT DATABASE SCHEMA
+═══════════════════════════════════════════════════
+
+CREATE TABLE listings (
+    id             char(36)                       NOT NULL PRIMARY KEY,
+    owner_id       char(36)                       NOT NULL,
+    title          varchar(255)                   NOT NULL,
+    area           varchar(255)                   NULL,
+    road_and_house varchar(255)                   NULL,
+    type           varchar(255)                   NOT NULL,
+    price          int                            NOT NULL,
+    deposit        int                            NULL,
+    beds           int                            NOT NULL,
+    baths          int                            NOT NULL,
+    size           int                            NULL,
+    description    text                           NULL,
+    coord_x        double                         NULL,
+    coord_y        double                         NULL,
+    status         varchar(255) DEFAULT 'pending' NOT NULL,
+    views          int          DEFAULT 0         NOT NULL,
+    created_at     timestamp                      NULL,
+    updated_at     timestamp                      NULL,
+    division_id    bigint unsigned                NULL,
+    district_id    bigint unsigned                NULL,
+    upazila_id     bigint unsigned                NULL,
+    union_id       bigint unsigned                NULL,
+    FK division_id → divisions(id) ON DELETE SET NULL,
+    FK district_id → districts(id) ON DELETE SET NULL,
+    FK owner_id    → users(id),
+    FK union_id    → unions(id)    ON DELETE SET NULL,
+    FK upazila_id  → upazilas(id)  ON DELETE SET NULL
+);
+
+Indexes: area, owner_id, price, status,
+         status+price, type
+
+═══════════════════════════════════════════════════
+CURRENT LISTING MODEL
+═══════════════════════════════════════════════════
+
+namespace App\Models;
+
+class Listing extends Model
+{
+    use HasFactory;
+
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'owner_id', 'listing_type_id', 'title', 'area',
+        'road_and_house', 'price', 'deposit', 'beds',
+        'baths', 'size', 'description', 'coord_x',
+        'coord_y', 'status', 'rejection_reason', 'views',
+        'division_id', 'district_id', 'upazila_id', 'union_id',
+    ];
+
+    protected static function boot(): void
+    {
+        parent::boot();
+        static::creating(fn ($model) => $model->id = (string) Str::uuid());
+        static::deleting(fn (Listing $listing) =>
+            Storage::disk(config('filesystems.default'))
+                ->deleteDirectory('listings/' . $listing->id)
+        );
+    }
+
+    protected function casts(): array
+    {
+        return [
+            'status' => ListingStatus::class,
+        ];
+    }
+
+    // Existing relations:
+    owner()       → belongsTo User
+    listingType() → belongsTo ListingType (using listing_type_id)
+    photos()      → hasMany ListingPhoto orderBy position
+    amenities()   → belongsToMany Amenity via listing_amenity
+    chats()       → hasMany Chat
+    savedBy()     → belongsToMany User via wishlists
+    division()    → belongsTo Division
+    district()    → belongsTo District
+    upazila()     → belongsTo Upazila
+    union()       → belongsTo Union
+}
+
+═══════════════════════════════════════════════════
+CURRENT ROUTES
+═══════════════════════════════════════════════════
+
+// Owner routes (middleware: owner)
+Route::middleware('owner')->group(function () {
+    Route::get   ('/owner/listings',            [OwnerController::class, 'index']);
+    Route::post  ('/listings',                  [OwnerController::class, 'store']);
+    Route::post  ('/listings/{id}/photos',      [OwnerController::class, 'uploadPhotos']);
+    Route::patch ('/listings/{id}/location',    [OwnerController::class, 'updateLocation']);
+    Route::post  ('/listings/{id}/submit',      [OwnerController::class, 'submit']);
+    Route::post  ('/listings/{id}/mark-rented', [OwnerController::class, 'markAsRented']);
+    Route::patch ('/listings/{id}',             [OwnerController::class, 'update']);
+    Route::delete('/listings/{id}',             [OwnerController::class, 'destroy']);
+});
+
+// Renter routes already exist:
+GET /listings       → all listings with filters
+GET /listings/{id}  → single listing detail
+
+═══════════════════════════════════════════════════
+TASK 1 — DATABASE MIGRATIONS
+═══════════════════════════════════════════════════
+
+Create migration: create_listing_facings_table
+    id    tinyint unsigned AUTO_INCREMENT PRIMARY KEY
+    label varchar(50) NOT NULL
+    slug  varchar(50) NOT NULL UNIQUE
+    (no timestamps)
+
+Seed listing_facings with:
+    { id:1, label:'North',      slug:'north'      }
+    { id:2, label:'South',      slug:'south'      }
+    { id:3, label:'East',       slug:'east'       }
+    { id:4, label:'West',       slug:'west'       }
+    { id:5, label:'North-East', slug:'north-east' }
+    { id:6, label:'North-West', slug:'north-west' }
+    { id:7, label:'South-East', slug:'south-east' }
+    { id:8, label:'South-West', slug:'south-west' }
+
+----------------------------------------------------
+
+Create migration: add_new_fields_to_listings_table
+Add these columns to listings table:
+
+    -- Availability
+    available_from    DATE             NULL
+
+    -- Flat Details
+    floor_no          TINYINT UNSIGNED NULL
+    facing_id         TINYINT UNSIGNED NULL
+                      FK → listing_facings(id)
+                      ON DELETE SET NULL
+
+    -- Location details (ALL OPTIONAL - NEVER REQUIRED)
+    road              VARCHAR(255)     NULL
+    house_name        VARCHAR(255)     NULL
+    block             VARCHAR(100)     NULL
+    section           VARCHAR(100)     NULL
+
+    -- Owner Contact
+    owner_name        VARCHAR(255)     NULL
+    owner_phone       VARCHAR(20)      NULL
+    owner_alt_phone   VARCHAR(20)      NULL
+    owner_email       VARCHAR(255)     NULL
+    preferred_contact ENUM('call','whatsapp','both')
+                      NULL DEFAULT 'call'
+
+Add these indexes:
+    listings_available_from_index → (available_from)
+    listings_floor_no_index       → (floor_no)
+    listings_facing_id_index      → (facing_id)
+    listings_status_type_available_index
+        → (status, listing_type_id, available_from)
+
+═══════════════════════════════════════════════════
+TASK 2 — MODELS
+═══════════════════════════════════════════════════
+
+2A. Create new model: App\Models\ListingFacing
+    Table: listing_facings
+    public $timestamps = false
+    fillable: ['label', 'slug']
+    Relation: listings() → hasMany(Listing, 'facing_id')
+
+----------------------------------------------------
+
+2B. Update existing Listing model:
+
+DO NOT change:
+    - boot() method (UUID + storage delete logic)
+    - ListingStatus enum cast on status
+    - Any existing relations
+    - incrementing, keyType settings
+
+ADD to $fillable:
+    'available_from', 'floor_no', 'facing_id',
+    'road', 'house_name', 'block', 'section',
+    'owner_name', 'owner_phone', 'owner_alt_phone',
+    'owner_email', 'preferred_contact'
+
+UPDATE casts() to include:
+    'available_from' => 'date:Y-m-d',
+    'floor_no'       => 'integer',
+    'price'          => 'integer',
+    'deposit'        => 'integer',
+    'beds'           => 'integer',
+    'baths'          => 'integer',
+    'size'           => 'integer',
+    'views'          => 'integer',
+    'coord_x'        => 'float',
+    'coord_y'        => 'float',
+    'status'         => ListingStatus::class, // keep existing
+
+ADD new relation:
+    facing() → belongsTo(ListingFacing::class, 'facing_id')
+
+═══════════════════════════════════════════════════
+TASK 3 — ROUTES UPDATE
+═══════════════════════════════════════════════════
+
+Add inside owner middleware group:
+Route::patch('/listings/{id}/owner-info',
+    [OwnerController::class, 'updateOwnerInfo']);
+
+Add as public routes (no auth):
+Route::get('/meta/listing-facings',
+    [MetaController::class, 'facings']);
+Route::get('/meta/listing-types',
+    [MetaController::class, 'types']);
+
+═══════════════════════════════════════════════════
+TASK 4 — META CONTROLLER (NEW)
+═══════════════════════════════════════════════════
+
+Create App\Http\Controllers\MetaController
+
+Method: types()
+    GET /meta/listing-types
+    Return all rows from listing_types table
+    Cache for 24 hours using Cache::remember
+    Response: { "data": [ { "id", "label", "slug" } ] }
+
+Method: facings()
+    GET /meta/listing-facings
+    Return all rows from listing_facings table
+    Cache for 24 hours using Cache::remember
+    Response: { "data": [ { "id", "label", "slug" } ] }
+
+═══════════════════════════════════════════════════
+TASK 5 — OWNER CONTROLLER UPDATES
+═══════════════════════════════════════════════════
+
+All methods must:
+    - Verify listing belongs to authenticated owner
+    - Return 403 if listing does not belong to owner
+    - Return consistent JSON:
+      { "success": true, "data": {...}, "message": "" }
+
+----------------------------------------------------
+5A. store() — POST /listings
+----------------------------------------------------
+Validate and save:
+
+EXISTING (keep as is):
+    title           → required|string|max:255
+    listing_type_id → required|integer|exists:listing_types,id
+    price           → required|integer|min:0
+    deposit         → nullable|integer|min:0
+    beds            → required|integer|min:0
+    baths           → required|integer|min:0
+    size            → nullable|integer|min:0
+    description     → nullable|string
+
+NEW (add):
+    available_from  → nullable|date|after_or_equal:today
+    floor_no        → nullable|integer|min:0|max:100
+    facing_id       → nullable|integer|exists:listing_facings,id
+
+Auto set:
+    owner_id = auth()->id()
+    status   = 'pending'
+
+Return listing with relations:
+    with(['listingType', 'facing', 'photos'])
+
+----------------------------------------------------
+5B. uploadPhotos() — POST /listings/{id}/photos
+----------------------------------------------------
+No logic changes needed.
+Make sure ownership check exists (403 if not owner).
+
+----------------------------------------------------
+5C. updateLocation() — PATCH /listings/{id}/location
+----------------------------------------------------
+Validate and save:
+
+EXISTING (keep):
+    division_id → nullable|exists:divisions,id
+    district_id → nullable|exists:districts,id
+    upazila_id  → nullable|exists:upazilas,id
+    union_id    → nullable|exists:unions,id
+    area        → nullable|string|max:255
+    coord_x     → nullable|numeric
+    coord_y     → nullable|numeric
+
+NEW (add - ALL OPTIONAL, NEVER REQUIRED):
+    road        → nullable|string|max:255
+    house_name  → nullable|string|max:255
+    block       → nullable|string|max:100
+    section     → nullable|string|max:100
+
+IMPORTANT for road, house_name, block, section:
+    - Never validate as required
+    - Only update if present in request using
+      $request->only([...])
+    - If not provided in request, do not overwrite
+      existing value, do not set to null
+    - User can submit without any of these fields
+      and it must work without any error
+
+Return updated listing with relations:
+    with(['listingType', 'facing', 'division',
+          'district', 'upazila', 'union'])
+
+----------------------------------------------------
+5D. updateOwnerInfo() — PATCH /listings/{id}/owner-info
+----------------------------------------------------
+This is a NEW method.
+
+Validate (ALL optional):
+    owner_name        → nullable|string|max:255
+    owner_phone       → nullable|string|max:20
+    owner_alt_phone   → nullable|string|max:20
+    owner_email       → nullable|email|max:255
+    preferred_contact → nullable|in:call,whatsapp,both
+
+Auto-fill from auth user if not provided in request:
+    owner_name  → use auth()->user()->name  if not sent
+    owner_phone → use auth()->user()->phone if not sent
+    owner_email → use auth()->user()->email if not sent
+
+Make sure ownership check exists (403 if not owner).
+Save and return updated listing object.
+
+----------------------------------------------------
+5E. submit() — POST /listings/{id}/submit
+----------------------------------------------------
+No logic changes needed.
+Make sure ownership check exists (403 if not owner).
+
+----------------------------------------------------
+5F. markAsRented() — POST /listings/{id}/mark-rented
+----------------------------------------------------
+No logic changes needed.
+Make sure ownership check exists (403 if not owner).
+
+----------------------------------------------------
+5G. update() — PATCH /listings/{id}
+----------------------------------------------------
+Full edit endpoint. Must support ALL fields.
+
+Validate (all nullable for edit):
+    title           → nullable|string|max:255
+    listing_type_id → nullable|integer|exists:listing_types,id
+    price           → nullable|integer|min:0
+    deposit         → nullable|integer|min:0
+    beds            → nullable|integer|min:0
+    baths           → nullable|integer|min:0
+    size            → nullable|integer|min:0
+    description     → nullable|string
+    available_from  → nullable|date|after_or_equal:today
+    floor_no        → nullable|integer|min:0|max:100
+    facing_id       → nullable|integer|exists:listing_facings,id
+    division_id     → nullable|exists:divisions,id
+    district_id     → nullable|exists:districts,id
+    upazila_id      → nullable|exists:upazilas,id
+    union_id        → nullable|exists:unions,id
+    area            → nullable|string|max:255
+    coord_x         → nullable|numeric
+    coord_y         → nullable|numeric
+    owner_name      → nullable|string|max:255
+    owner_phone     → nullable|string|max:20
+    owner_alt_phone → nullable|string|max:20
+    owner_email     → nullable|email|max:255
+    preferred_contact → nullable|in:call,whatsapp,both
+
+    -- THESE FOUR ARE ALWAYS OPTIONAL, NEVER REQUIRED
+    road            → nullable|string|max:255
+    house_name      → nullable|string|max:255
+    block           → nullable|string|max:100
+    section         → nullable|string|max:100
+
+IMPORTANT for road, house_name, block, section:
+    - Never validate as required anywhere
+    - Only update if present in request
+    - If not provided, do not overwrite existing value
+    - Do not set to null if not in request
+    - Use $request->only([...all fields...])
+    - User can submit full edit form without these
+      four fields and it must work without any error
+
+Make sure ownership check exists (403 if not owner).
+
+Return updated listing with all relations:
+    with(['listingType', 'facing', 'photos',
+          'division', 'district', 'upazila', 'union'])
+
+----------------------------------------------------
+5H. destroy() — DELETE /listings/{id}
+----------------------------------------------------
+No logic changes needed.
+Make sure ownership check exists (403 if not owner).
+Existing boot() handles storage cleanup automatically.
+
+----------------------------------------------------
+5I. index() — GET /owner/listings
+----------------------------------------------------
+Return all listings for authenticated owner only.
+Eager load: listingType, facing, photos
+
+Support filter params:
+    status  → filter by listing status
+    type_id → filter by listing_type_id
+
+Return paginated (15 per page) with pagination meta.
+
+═══════════════════════════════════════════════════
+TASK 6 — RENTER CONTROLLER UPDATES
+═══════════════════════════════════════════════════
+
+----------------------------------------------------
+6A. index() — GET /listings
+----------------------------------------------------
+Return only active/approved listings.
+Eager load: listingType, facing, photos,
+            division, district, upazila, union
+
+Support ALL these filter query params:
+    listing_type_id      → exact match
+    price_min            → price >= value
+    price_max            → price <= value
+    beds                 → exact match
+    baths                → exact match
+    facing_id            → exact match
+    floor_min            → floor_no >= value
+    floor_max            → floor_no <= value
+    size_min             → size >= value
+    size_max             → size <= value
+    available_from_start → available_from >= value (date)
+    available_from_end   → available_from <= value (date)
+    division_id          → exact match
+    district_id          → exact match
+    upazila_id           → exact match
+    union_id             → exact match
+    search               → LIKE %value% on:
+                           title, area, road,
+                           house_name, block, section
+    sort_by              → price_asc    → ORDER BY price ASC
+                           price_desc   → ORDER BY price DESC
+                           newest       → ORDER BY created_at DESC
+                           oldest       → ORDER BY created_at ASC
+                           available_soon → ORDER BY
+                                            available_from ASC
+
+Return paginated (15 per page) with pagination meta.
+
+----------------------------------------------------
+6B. show() — GET /listings/{id}
+----------------------------------------------------
+Increment views column by 1 on every call.
+Eager load ALL relations:
+    listingType, facing, photos, amenities,
+    division, district, upazila, union
+
+Return full listing detail including all new fields.
+
+═══════════════════════════════════════════════════
+TASK 7 — STANDARD RESPONSE FORMAT
+═══════════════════════════════════════════════════
+
+Every listing object in any response must include:
+
+{
+  "id": "",
+  "owner_id": "",
+  "title": "",
+  "listing_type_id": null,
+  "listing_type": { "id", "label", "slug" },
+  "price": 0,
+  "deposit": null,
+  "available_from": null,
+  "beds": 0,
+  "baths": 0,
+  "size": null,
+  "floor_no": null,
+  "facing_id": null,
+  "facing": { "id", "label", "slug" },
+  "description": null,
+  "division_id": null,
+  "district_id": null,
+  "upazila_id": null,
+  "union_id": null,
+  "division": { "id", "name" },
+  "district": { "id", "name" },
+  "upazila": { "id", "name" },
+  "union": { "id", "name" },
+  "area": null,
+  "road": null,
+  "house_name": null,
+  "block": null,
+  "section": null,
+  "coord_x": null,
+  "coord_y": null,
+  "owner_name": null,
+  "owner_phone": null,
+  "owner_alt_phone": null,
+  "owner_email": null,
+  "preferred_contact": null,
+  "status": "",
+  "rejection_reason": null,
+  "views": 0,
+  "photos": [],
+  "created_at": "",
+  "updated_at": ""
+}
+
+All API responses wrapped as:
+{
+  "success": true,
+  "data": { ...listing or paginated list... },
+  "message": ""
+}
+
+═══════════════════════════════════════════════════
+IMPORTANT RULES — DO NOT BREAK THESE
+═══════════════════════════════════════════════════
+
+1.  DO NOT modify boot() method in Listing model
+2.  DO NOT remove ListingStatus enum cast on status
+3.  DO NOT remove any existing relations in Listing model
+4.  DO NOT remove any existing fillable fields
+5.  DO NOT use $request->all() — always use $request->only()
+6.  Always check listing ownership before any owner action
+    → abort(403) if listing->owner_id !== auth()->id()
+7.  Always eager load relations — never lazy load
+    → prevents N+1 query issues
+8.  Keep road_and_house column — do not delete it
+    → old data, keep for backward compatibility
+9.  Paginate all list endpoints at 15 per page
+10. Run migrations in this order:
+    → create_listing_facings_table (first)
+    → add_new_fields_to_listings_table (second)
+11. road, house_name, block, section are ALWAYS optional
+    → NEVER required in any validation anywhere
+    → NEVER set to null if not provided in request
+    → ONLY update if present in request using only()
+    → User can skip all four and app must work perfectly

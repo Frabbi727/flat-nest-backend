@@ -19,20 +19,17 @@ class OwnerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        return ApiResponse::success(
-            ListingResource::collection($this->listings->getOwnerDashboard($request->user()->id))
-        );
+        $filters   = $request->only(['status', 'type_id']);
+        $paginator = $this->listings->getOwnerDashboard($request->user()->id, $filters);
+
+        return ApiResponse::paginated(ListingResource::collection($paginator), $paginator);
     }
 
     public function store(StoreListingRequest $request): JsonResponse
     {
         $listing = $this->listings->create($request->user()->id, $request->validated());
 
-        return ApiResponse::success(
-            ['id' => $listing->id, 'listing_step' => 2],
-            'Listing draft created. Upload photos to submit for review.',
-            201
-        );
+        return ApiResponse::success(new ListingResource($listing), 'Listing draft created.', 201);
     }
 
     public function uploadPhotos(UploadListingPhotosRequest $request, string $id): JsonResponse
@@ -43,8 +40,29 @@ class OwnerController extends Controller
 
     public function updateLocation(ListingLocationRequest $request, string $id): JsonResponse
     {
-        $this->listings->updateLocation($id, $request->user()->id, $request->validated());
-        return ApiResponse::success(['listing_step' => 4]);
+        $listing = $this->listings->updateLocation($id, $request->user()->id, $request->validated());
+
+        return ApiResponse::success(new ListingResource($listing));
+    }
+
+    public function updateOwnerInfo(Request $request, string $id): JsonResponse
+    {
+        $data = $request->validate([
+            'owner_name'        => 'nullable|string|max:255',
+            'owner_phone'       => 'nullable|string|max:20',
+            'owner_alt_phone'   => 'nullable|string|max:20',
+            'owner_email'       => 'nullable|email|max:255',
+            'preferred_contact' => 'nullable|in:call,whatsapp,both',
+        ]);
+
+        $user = $request->user();
+        $data['owner_name']  = $data['owner_name']  ?? $user->name;
+        $data['owner_phone'] = $data['owner_phone'] ?? $user->phone;
+        $data['owner_email'] = $data['owner_email'] ?? $user->email;
+
+        $listing = $this->listings->updateOwnerInfo($id, $user->id, $data);
+
+        return ApiResponse::success(new ListingResource($listing));
     }
 
     public function submit(Request $request, string $id): JsonResponse

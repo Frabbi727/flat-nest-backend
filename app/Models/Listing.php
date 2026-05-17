@@ -21,6 +21,9 @@ class Listing extends Model
         'price', 'deposit', 'beds', 'baths', 'size', 'description',
         'coord_x', 'coord_y', 'status', 'rejection_reason', 'views',
         'division_id', 'district_id', 'upazila_id', 'union_id',
+        'available_from', 'floor_no', 'facing_id',
+        'road', 'house_name', 'block', 'section',
+        'owner_name', 'owner_phone', 'owner_alt_phone', 'owner_email', 'preferred_contact',
     ];
 
     protected static function boot(): void
@@ -35,13 +38,28 @@ class Listing extends Model
     protected function casts(): array
     {
         return [
-            'status' => ListingStatus::class,
+            'status'         => ListingStatus::class,
+            'available_from' => 'date:Y-m-d',
+            'floor_no'       => 'integer',
+            'price'          => 'integer',
+            'deposit'        => 'integer',
+            'beds'           => 'integer',
+            'baths'          => 'integer',
+            'size'           => 'integer',
+            'views'          => 'integer',
+            'coord_x'        => 'float',
+            'coord_y'        => 'float',
         ];
     }
 
     public function owner()
     {
         return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    public function facing()
+    {
+        return $this->belongsTo(ListingFacing::class, 'facing_id');
     }
 
     public function listingType()

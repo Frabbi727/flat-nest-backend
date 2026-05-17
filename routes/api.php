@@ -2,10 +2,11 @@
 
 use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
-use App\Http\Controllers\Api\V1\ListingTypeController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\GeoController;
 use App\Http\Controllers\Api\V1\ListingController;
+use App\Http\Controllers\Api\V1\ListingTypeController;
+use App\Http\Controllers\Api\V1\MetaController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\OwnerController;
 use App\Http\Controllers\Api\V1\WishlistController;
@@ -27,6 +28,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/geo/districts/{division_id}', [GeoController::class, 'districts']);
     Route::get('/geo/upazilas/{district_id}',  [GeoController::class, 'upazilas']);
     Route::get('/geo/unions/{upazila_id}',     [GeoController::class, 'unions']);
+
+    // Meta — public
+    Route::get('/meta/listing-types',   [MetaController::class, 'types']);
+    Route::get('/meta/listing-facings', [MetaController::class, 'facings']);
 
     // Amenities — public read, protected write
     Route::get('/amenities', [AmenityController::class, 'index']);
@@ -54,6 +59,7 @@ Route::prefix('v1')->group(function () {
             Route::patch ('/listings/{id}/location',    [OwnerController::class, 'updateLocation']);
             Route::post  ('/listings/{id}/submit',      [OwnerController::class, 'submit']);
             Route::post  ('/listings/{id}/mark-rented', [OwnerController::class, 'markAsRented']);
+            Route::patch ('/listings/{id}/owner-info', [OwnerController::class, 'updateOwnerInfo']);
             Route::patch ('/listings/{id}',             [OwnerController::class, 'update']);
             Route::delete('/listings/{id}',             [OwnerController::class, 'destroy']);
         });

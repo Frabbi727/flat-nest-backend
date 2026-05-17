@@ -17,15 +17,24 @@ class ListingController extends Controller
     {
         $filters = $request->only([
             'search',
+            'listing_type_id',
+            'price_min',
+            'price_max',
+            'beds',
+            'baths',
+            'facing_id',
+            'floor_min',
+            'floor_max',
+            'size_min',
+            'size_max',
+            'available_from_start',
+            'available_from_end',
             'division_id',
             'district_id',
             'upazila_id',
             'union_id',
-            'listing_type_id',
-            'minPrice',
-            'maxPrice',
-            'beds',
             'amenities',
+            'sort_by',
         ]);
 
         $paginator = $this->listings->getFeed($filters);

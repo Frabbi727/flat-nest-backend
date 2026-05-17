@@ -23,6 +23,37 @@ class ListingService
         return $this->listings->findActive($filters);
     }
 
+    public function getNearby(array $params): LengthAwarePaginator
+    {
+        $lat    = (float) $params['coord_y'];          // latitude  = coord_y
+        $lng    = (float) $params['coord_x'];          // longitude = coord_x
+        $radius = (float) ($params['radius'] ?? 10.0); // default 10 km
+
+        // Clamp radius to allowed range
+        $radius = max(0.5, min(50.0, $radius));
+
+        $filters = array_intersect_key($params, array_flip([
+            // Listing type & price
+            'listing_type_id', 'price_min', 'price_max',
+            // Rooms
+            'beds', 'baths',
+            // Property details
+            'facing_id', 'floor_min', 'floor_max', 'size_min', 'size_max',
+            // Availability
+            'available_from_start', 'available_from_end',
+            // Location (within the geo radius)
+            'division_id', 'district_id', 'upazila_id', 'union_id',
+            // Text search
+            'search',
+            // Amenities (comma-separated IDs)
+            'amenities',
+            // Secondary sort (distance is always primary)
+            'sort_by',
+        ]));
+
+        return $this->listings->findNearby($lat, $lng, $radius, $filters);
+    }
+
     public function getById(string $id): Listing
     {
         $listing = $this->listings->findById($id);

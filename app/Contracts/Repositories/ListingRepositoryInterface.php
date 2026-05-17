@@ -14,4 +14,5 @@ interface ListingRepositoryInterface
     public function update(Listing $listing, array $data): Listing;
     public function delete(Listing $listing): void;
     public function incrementViews(Listing $listing): void;
+    public function findNearby(float $lat, float $lng, float $radius, array $filters): LengthAwarePaginator;
 }

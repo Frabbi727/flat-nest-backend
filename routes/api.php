@@ -20,8 +20,10 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/refresh',  [AuthController::class, 'refresh']);
 
     // Listings — public
-    Route::get('/listings',      [ListingController::class, 'index']);
-    Route::get('/listings/{id}', [ListingController::class, 'show']);
+    Route::get('/listings',         [ListingController::class, 'index']);
+    Route::get('/listings/nearby',  [ListingController::class, 'nearby']); // must be before /{id}
+    Route::get('/listings/{id}',    [ListingController::class, 'show']);
+
 
     // Geo — public
     Route::get('/geo/divisions',               [GeoController::class, 'divisions']);

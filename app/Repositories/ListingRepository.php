@@ -168,6 +168,7 @@ class ListingRepository implements ListingRepositoryInterface
             default          => null,  // distance only — no secondary sort
         };
 
+
         return $query->paginate(15);
     }
 }

@@ -13,4 +13,5 @@ interface NotificationRepositoryInterface
     public function create(array $data): AppNotification;
     public function markRead(AppNotification $notification): void;
     public function markAllRead(string $userId): void;
+    public function unreadCountForUser(string $userId): int;
 }

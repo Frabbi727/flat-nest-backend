@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\Repositories\ListingRepositoryInterface;
 use App\Enums\ListingStatus;
+use App\Enums\NotificationKind;
 use App\Models\AppNotification;
 use App\Models\Listing;
 use App\Models\ListingPhoto;
@@ -165,10 +166,20 @@ class ListingService
             );
         }
 
-        return $this->listings->update($listing, [
+        $updated = $this->listings->update($listing, [
             'status'           => ListingStatus::Pending,
             'rejection_reason' => null,
         ]);
+
+        AppNotification::create([
+            'user_id'      => $listing->owner_id,
+            'kind'         => NotificationKind::ListingSubmitted->value,
+            'title'        => 'Listing submitted for review',
+            'body'         => '"' . $listing->title . '" has been submitted and is awaiting admin review.',
+            'reference_id' => $listing->id,
+        ]);
+
+        return $updated;
     }
 
     public function markAsRented(string $listingId, string $ownerId): Listing
@@ -265,7 +276,7 @@ class ListingService
 
         AppNotification::create([
             'user_id'      => $listing->owner_id,
-            'kind'         => 'listing',
+            'kind'         => NotificationKind::ListingReview->value,
             'title'        => 'Your listing is under re-review.',
             'body'         => 'You edited "' . $listing->title . '". It has been sent for re-approval and is temporarily hidden from the feed.',
             'reference_id' => $listing->id,

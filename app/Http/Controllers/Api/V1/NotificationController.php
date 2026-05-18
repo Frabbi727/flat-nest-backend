@@ -15,8 +15,23 @@ class NotificationController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $paginator = $this->notifications->getForUser($request->user()->id);
-        return ApiResponse::paginated(NotificationResource::collection($paginator), $paginator);
+        $userId    = $request->user()->id;
+        $paginator = $this->notifications->getForUser($userId);
+        $unread    = $this->notifications->unreadCount($userId);
+
+        return ApiResponse::paginated(
+            NotificationResource::collection($paginator),
+            $paginator,
+            null,
+            ['unread_count' => $unread]
+        );
+    }
+
+    public function unreadCount(Request $request): JsonResponse
+    {
+        return ApiResponse::success([
+            'unread_count' => $this->notifications->unreadCount($request->user()->id),
+        ]);
     }
 
     public function markRead(Request $request, string $id): JsonResponse

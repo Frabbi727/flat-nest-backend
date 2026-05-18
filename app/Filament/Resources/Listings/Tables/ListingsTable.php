@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Listings\Tables;
 
 use App\Enums\ListingStatus;
+use App\Enums\NotificationKind;
 use App\Models\AppNotification;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -56,7 +57,7 @@ class ListingsTable
                         $record->update(['status' => ListingStatus::Active]);
                         AppNotification::create([
                             'user_id'      => $record->owner_id,
-                            'kind'         => 'listing',
+                            'kind'         => NotificationKind::ListingApproved->value,
                             'title'        => 'Your listing was approved!',
                             'body'         => $record->title . ' is now live.',
                             'reference_id' => $record->id,
@@ -81,7 +82,7 @@ class ListingsTable
                         ]);
                         AppNotification::create([
                             'user_id'      => $record->owner_id,
-                            'kind'         => 'listing',
+                            'kind'         => NotificationKind::ListingRejected->value,
                             'title'        => 'Your listing was rejected.',
                             'body'         => $data['rejection_reason'],
                             'reference_id' => $record->id,

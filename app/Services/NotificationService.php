@@ -31,4 +31,9 @@ class NotificationService
     {
         $this->notifications->markAllRead($userId);
     }
+
+    public function unreadCount(string $userId): int
+    {
+        return $this->notifications->unreadCountForUser($userId);
+    }
 }

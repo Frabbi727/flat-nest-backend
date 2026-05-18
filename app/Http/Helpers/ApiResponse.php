@@ -17,17 +17,17 @@ class ApiResponse
         ], $status);
     }
 
-    public static function paginated(mixed $data, LengthAwarePaginator $paginator, ?string $message = null): JsonResponse
+    public static function paginated(mixed $data, LengthAwarePaginator $paginator, ?string $message = null, array $extraMeta = []): JsonResponse
     {
         return response()->json([
             'success' => true,
             'data'    => $data,
-            'meta'    => [
+            'meta'    => array_merge([
                 'current_page' => $paginator->currentPage(),
                 'last_page'    => $paginator->lastPage(),
                 'per_page'     => $paginator->perPage(),
                 'total'        => $paginator->total(),
-            ],
+            ], $extraMeta),
             'message' => $message,
             'errors'  => null,
         ]);

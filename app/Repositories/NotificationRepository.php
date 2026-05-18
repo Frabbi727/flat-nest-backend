@@ -33,4 +33,9 @@ class NotificationRepository implements NotificationRepositoryInterface
     {
         AppNotification::where('user_id', $userId)->where('is_unread', true)->update(['is_unread' => false]);
     }
+
+    public function unreadCountForUser(string $userId): int
+    {
+        return AppNotification::where('user_id', $userId)->where('is_unread', true)->count();
+    }
 }

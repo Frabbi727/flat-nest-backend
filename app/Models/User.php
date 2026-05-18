@@ -19,7 +19,7 @@ class User extends Authenticatable implements FilamentUser
     protected $keyType = 'string';
 
     protected $fillable = [
-        'email', 'password_hash', 'name', 'phone',
+        'email', 'password_hash', 'name', 'phone', 'google_id',
         'role', 'date_of_birth', 'avatar_url', 'is_complete',
     ];
 
@@ -41,7 +41,7 @@ class User extends Authenticatable implements FilamentUser
     // Map password_hash → password for Laravel auth
     public function getAuthPassword(): string
     {
-        return $this->password_hash;
+        return $this->password_hash ?? '';
     }
 
     // Only users with role=admin can access the Filament panel

@@ -6,6 +6,7 @@ use App\Contracts\Repositories\UserRepositoryInterface;
 use App\Models\RefreshToken;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
@@ -44,6 +45,40 @@ class AuthService
         return $url;
     }
 
+    public function googleSignIn(string $idToken): array
+    {
+        $payload = $this->verifyGoogleToken($idToken);
+
+        if (! $payload) {
+            throw new UnauthorizedHttpException('', 'Invalid Google token');
+        }
+
+        $googleId = $payload['sub'];
+        $email    = $payload['email'];
+        $name     = $payload['name'] ?? $email;
+
+        $user = $this->users->findByGoogleId($googleId);
+
+        if (! $user) {
+            $user = $this->users->findByEmail($email);
+
+            if ($user) {
+                $this->users->update($user, ['google_id' => $googleId]);
+                $user = $user->fresh();
+            } else {
+                $user = $this->users->create([
+                    'name'      => $name,
+                    'email'     => $email,
+                    'google_id' => $googleId,
+                ]);
+            }
+        }
+
+        $step = $user->is_complete ? 3 : 2;
+
+        return $this->tokenResponse($user, registrationStep: $step);
+    }
+
     public function login(string $email, string $password): array
     {
         $user = $this->users->findByEmail($email);
@@ -72,6 +107,26 @@ class AuthService
         }
 
         return $token->user->createToken('access')->plainTextToken;
+    }
+
+    private function verifyGoogleToken(string $idToken): ?array
+    {
+        $response = Http::get('https://oauth2.googleapis.com/tokeninfo', [
+            'id_token' => $idToken,
+        ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        $payload  = $response->json();
+        $clientId = config('services.google.client_id');
+
+        if (($payload['aud'] ?? null) !== $clientId) {
+            return null;
+        }
+
+        return $payload;
     }
 
     private function tokenResponse(User $user, ?int $registrationStep = null): array

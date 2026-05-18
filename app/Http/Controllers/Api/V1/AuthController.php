@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Helpers\ApiResponse;
+use App\Http\Requests\Auth\GoogleAuthRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RefreshTokenRequest;
 use App\Http\Requests\Auth\RegisterAvatarRequest;
@@ -33,6 +34,15 @@ class AuthController extends Controller
     {
         $url = $this->auth->updateAvatar($request->user(), $request->file('avatar'));
         return ApiResponse::success(['avatar_url' => $url], 'Registration complete');
+    }
+
+    public function googleSignIn(GoogleAuthRequest $request): JsonResponse
+    {
+        try {
+            return ApiResponse::success($this->auth->googleSignIn($request->id_token));
+        } catch (UnauthorizedHttpException $e) {
+            return ApiResponse::error($e->getMessage(), 'INVALID_GOOGLE_TOKEN', 401);
+        }
     }
 
     public function login(LoginRequest $request): JsonResponse

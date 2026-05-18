@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\Repositories\UserRepositoryInterface;
+use App\Models\DeviceSession;
 use App\Models\RefreshToken;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -100,6 +101,10 @@ class AuthService
 
     public function logout(User $user): void
     {
+        DeviceSession::where('user_id', $user->id)
+            ->whereNull('logged_out_at')
+            ->update(['logged_out_at' => now(), 'fcm_token' => null]);
+
         RefreshToken::where('user_id', $user->id)->delete();
         $user->currentAccessToken()->delete();
     }

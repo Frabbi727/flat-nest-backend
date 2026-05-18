@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Listings\Tables;
 use App\Enums\ListingStatus;
 use App\Enums\NotificationKind;
 use App\Models\AppNotification;
+use App\Services\FcmService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -62,6 +63,7 @@ class ListingsTable
                             'body'         => $record->title . ' is now live.',
                             'reference_id' => $record->id,
                         ]);
+                        app(FcmService::class)->sendToUser($record->owner_id, 'Your listing was approved!', $record->title . ' is now live.');
                     }),
                 Action::make('reject')
                     ->label('Reject')
@@ -87,6 +89,7 @@ class ListingsTable
                             'body'         => $data['rejection_reason'],
                             'reference_id' => $record->id,
                         ]);
+                        app(FcmService::class)->sendToUser($record->owner_id, 'Your listing was rejected.', $data['rejection_reason']);
                     }),
                 EditAction::make(),
                 DeleteAction::make(),

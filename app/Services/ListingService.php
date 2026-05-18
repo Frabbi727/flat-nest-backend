@@ -17,7 +17,10 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 class ListingService
 {
-    public function __construct(private readonly ListingRepositoryInterface $listings) {}
+    public function __construct(
+        private readonly ListingRepositoryInterface $listings,
+        private readonly FcmService $fcm,
+    ) {}
 
     public function getFeed(array $filters): LengthAwarePaginator
     {
@@ -178,6 +181,7 @@ class ListingService
             'body'         => '"' . $listing->title . '" has been submitted and is awaiting admin review.',
             'reference_id' => $listing->id,
         ]);
+        $this->fcm->sendToUser($listing->owner_id, 'Listing submitted for review', '"' . $listing->title . '" is awaiting admin review.');
 
         return $updated;
     }
@@ -281,6 +285,7 @@ class ListingService
             'body'         => 'You edited "' . $listing->title . '". It has been sent for re-approval and is temporarily hidden from the feed.',
             'reference_id' => $listing->id,
         ]);
+        $this->fcm->sendToUser($listing->owner_id, 'Your listing is under re-review.', 'You edited "' . $listing->title . '". It is temporarily hidden from the feed.');
     }
 
     private function attachPhotos(Listing $listing, array $photos, int $startPosition = 0): void

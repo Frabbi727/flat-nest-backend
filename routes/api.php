@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
+use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\GeoController;
 use App\Http\Controllers\Api\V1\ListingController;
 use App\Http\Controllers\Api\V1\ListingTypeController;
@@ -83,6 +84,9 @@ Route::prefix('v1')->group(function () {
         Route::post  ('/listing-types',      [ListingTypeController::class, 'store']);
         Route::patch ('/listing-types/{id}', [ListingTypeController::class, 'update']);
         Route::delete('/listing-types/{id}', [ListingTypeController::class, 'destroy']);
+
+        // Device / FCM
+        Route::post('/device/fcm-token', [DeviceController::class, 'registerFcmToken']);
 
         // Notifications
         Route::get  ('/notifications',                  [NotificationController::class, 'index']);

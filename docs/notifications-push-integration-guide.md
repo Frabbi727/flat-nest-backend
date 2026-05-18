@@ -17,11 +17,11 @@ Both fire at the same time for every notification event. You need to implement b
 
 ---
 
-## Part 1 — FCM Push Notifications
+## Part 1 — Setup After Login (Required for Push)
 
-### Step 1: Register the FCM token after every login
+### Step 1: Register FCM token
 
-Immediately after a successful login (email/password OR Google Sign-In), call this endpoint with the Firebase FCM token from the device:
+Immediately after every login (email/password OR Google Sign-In), call:
 
 ```
 POST /api/v1/device/fcm-token
@@ -29,7 +29,6 @@ Authorization: Bearer <access_token>
 Content-Type: application/json
 ```
 
-**Request body:**
 ```json
 {
   "fcm_token": "<FCM registration token from Firebase>",
@@ -40,26 +39,48 @@ Content-Type: application/json
 
 | Field | Type | Required | Values |
 |---|---|---|---|
-| `fcm_token` | string | Yes | Token from `FirebaseMessaging.instance.getToken()` |
+| `fcm_token` | string | Yes | From `FirebaseMessaging.instance.getToken()` |
 | `device_type` | string | No | `android`, `ios`, `web` |
 | `device_model` | string | No | Device name, max 100 chars |
 
 **Response (200):**
 ```json
+{ "success": true, "data": null, "message": "Device registered" }
+```
+
+### Step 2: Send user location (for renter nearby alerts)
+
+After login, also send the user's GPS coordinates so the backend can notify them when a new listing appears nearby:
+
+```
+PATCH /api/v1/user/location
+Authorization: Bearer <access_token>
+Content-Type: application/json
+```
+
+```json
 {
-  "success": true,
-  "data": null,
-  "message": "Device registered"
+  "lat": 23.8103,
+  "lng": 90.4125
 }
 ```
 
-### Step 2: Re-register when Firebase rotates the token
+| Field | Type | Required | Range |
+|---|---|---|---|
+| `lat` | number | Yes | -90 to 90 |
+| `lng` | number | Yes | -180 to 180 |
 
-Firebase can rotate the FCM token at any time. Listen for token refresh and call the same endpoint again:
+**Response (200):**
+```json
+{ "success": true, "data": null, "message": "Location updated" }
+```
 
-**Flutter:**
+> Call this again whenever the user's location changes significantly (e.g. on app resume, or when the device location updates by more than 1km). Only relevant for **renters** — owners won't receive nearby notifications but the call is harmless for them.
+
+### Step 3: Re-register when Firebase rotates the token
+
 ```dart
-// On login — register token
+// On login
 Future<void> registerFcmToken(String accessToken) async {
   final token = await FirebaseMessaging.instance.getToken();
   if (token == null) return;
@@ -72,34 +93,37 @@ Future<void> registerFcmToken(String accessToken) async {
     },
     body: jsonEncode({
       'fcm_token': token,
-      'device_type': 'android', // or 'ios'
+      'device_type': 'android',
       'device_model': await getDeviceModel(),
     }),
   );
 }
 
-// On token refresh
+// When Firebase rotates the token
 FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
   final accessToken = await storage.read(key: 'access_token');
-  if (accessToken != null) {
-    await registerFcmToken(accessToken);
-  }
+  if (accessToken != null) await registerFcmToken(accessToken);
 });
 ```
 
-### Step 3: Handle incoming push messages
+### Step 4: Logout — everything cleared automatically
 
-Push messages arrive with `title` and `body` matching the in-app notification content.
+Calling `POST /api/v1/auth/logout` automatically clears the FCM token and device session on the backend. No push notifications will be sent to that device after logout.
 
-**Flutter — foreground messages:**
+For Google Sign-In users, also call `GoogleSignIn().signOut()` on the client side.
+
+---
+
+## Part 2 — Handling Incoming Push Messages
+
+Push messages arrive with `title` and `body` matching the in-app notification.
+
+**Flutter — foreground:**
 ```dart
 FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-  final notification = message.notification;
-  if (notification != null) {
-    showLocalNotification(
-      title: notification.title ?? '',
-      body: notification.body ?? '',
-    );
+  final n = message.notification;
+  if (n != null) {
+    showLocalNotification(title: n.title ?? '', body: n.body ?? '');
   }
 });
 ```
@@ -110,31 +134,70 @@ FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
 
 @pragma('vm:entry-point')
 Future<void> _backgroundHandler(RemoteMessage message) async {
-  // System handles display automatically — add custom logic here if needed
+  // System shows the notification automatically
 }
 ```
 
-### Step 4: Logout — token is cleared automatically
+**On notification tap — navigate based on kind:**
+```dart
+void handleNotificationTap(Map<String, dynamic> notification) {
+  final kind        = notification['kind'] as String;
+  final referenceId = notification['reference_id'] as String?;
 
-When the user logs out (`POST /api/v1/auth/logout`), the backend automatically:
-- Sets `logged_out_at` on the device session
-- Clears the stored FCM token
+  switch (kind) {
+    // Owner notifications
+    case 'listing_approved':
+      Navigator.pushNamed(context, '/listing/$referenceId');
+      break;
+    case 'listing_submitted':
+    case 'listing_rejected':
+    case 'listing_review':
+      Navigator.pushNamed(context, '/owner/listings/$referenceId');
+      break;
 
-After logout, **no more push notifications** will be sent to that device. No action needed on the mobile side.
+    // Renter notifications
+    case 'nearby_listing':
+      Navigator.pushNamed(context, '/listing/$referenceId');
+      break;
+    case 'wishlist_listing_rented':
+      Navigator.pushNamed(context, '/wishlist');
+      break;
+  }
+}
+```
 
 ---
 
-## Part 2 — In-App Notification API
+## Part 3 — Notification Kinds (Complete List)
 
-All endpoints require authentication: `Authorization: Bearer <access_token>`
+`reference_id` is always the relevant listing UUID.
+
+### Owner notifications
+
+| `kind` | When it fires | Navigate to |
+|---|---|---|
+| `listing_submitted` | Owner submits a listing for review | Owner listing detail |
+| `listing_approved` | Admin approves the listing | Public listing detail |
+| `listing_rejected` | Admin rejects the listing | Owner listing detail (show rejection reason) |
+| `listing_review` | Owner edits an active listing — goes back for re-approval | Owner listing detail |
+
+### Renter notifications
+
+| `kind` | When it fires | Navigate to |
+|---|---|---|
+| `nearby_listing` | A new listing is approved within 10km of renter's saved location | Public listing detail |
+| `wishlist_listing_rented` | An owner marks a wishlisted listing as rented | Wishlist screen |
 
 ---
+
+## Part 4 — In-App Notification API
+
+All endpoints require `Authorization: Bearer <access_token>`.
 
 ### List notifications (paginated)
 
 ```
 GET /api/v1/notifications?page=1
-Authorization: Bearer <access_token>
 ```
 
 **Response (200):**
@@ -144,168 +207,106 @@ Authorization: Bearer <access_token>
   "data": [
     {
       "id": "uuid",
-      "kind": "listing_submitted",
-      "title": "Listing submitted for review",
-      "body": "\"My Apartment\" has been submitted and is awaiting admin review.",
-      "time": "2 minutes ago",
+      "kind": "nearby_listing",
+      "title": "New listing near you!",
+      "body": "2BHK Flat in Mirpur is now available nearby.",
+      "time": "5 minutes ago",
       "is_unread": true,
       "reference_id": "listing-uuid"
     }
   ],
   "meta": {
     "current_page": 1,
-    "last_page": 3,
+    "last_page": 2,
     "per_page": 15,
-    "total": 42,
-    "unread_count": 5
+    "total": 20,
+    "unread_count": 3
   }
 }
 ```
 
-> `unread_count` is included in every list response so you can update the badge in one call.
+> `unread_count` is always in the meta — no need for a separate call when loading the notification screen.
 
----
-
-### Get unread count only
-
-Use this to update the notification badge without fetching the full list (e.g., on app resume).
+### Get unread count only (for badge)
 
 ```
 GET /api/v1/notifications/unread-count
-Authorization: Bearer <access_token>
 ```
 
-**Response (200):**
 ```json
-{
-  "success": true,
-  "data": {
-    "unread_count": 5
-  }
-}
+{ "success": true, "data": { "unread_count": 3 } }
 ```
-
----
 
 ### Mark one notification as read
 
 ```
 PATCH /api/v1/notifications/{id}/read
-Authorization: Bearer <access_token>
 ```
 
-**Response (200):**
 ```json
-{
-  "success": true,
-  "data": null,
-  "message": "Marked as read"
-}
+{ "success": true, "data": null, "message": "Marked as read" }
 ```
 
----
-
-### Mark all notifications as read
+### Mark all as read
 
 ```
 PATCH /api/v1/notifications/read-all
-Authorization: Bearer <access_token>
 ```
 
-**Response (200):**
 ```json
-{
-  "success": true,
-  "data": null,
-  "message": "All marked as read"
-}
+{ "success": true, "data": null, "message": "All marked as read" }
 ```
 
 ---
 
-## Part 3 — Notification Kinds
+## Part 5 — Recommended UI Flow
 
-Use the `kind` field to decide what to do when a notification is tapped (navigate to the correct screen). `reference_id` is always the relevant listing UUID.
-
-| `kind` | When it fires | Navigate to |
-|---|---|---|
-| `listing_submitted` | Owner submits a listing for review | Owner's listing detail screen |
-| `listing_approved` | Admin approves the listing | Public listing detail screen |
-| `listing_rejected` | Admin rejects the listing | Owner's listing detail screen (show rejection reason) |
-| `listing_review` | Owner edits an active listing — it goes back for re-approval | Owner's listing detail screen |
-
-**Flutter — tap handler example:**
-```dart
-void handleNotificationTap(Map<String, dynamic> notification) {
-  final kind = notification['kind'] as String;
-  final referenceId = notification['reference_id'] as String?;
-
-  switch (kind) {
-    case 'listing_approved':
-      Navigator.pushNamed(context, '/listing/$referenceId');
-      break;
-    case 'listing_submitted':
-    case 'listing_rejected':
-    case 'listing_review':
-      Navigator.pushNamed(context, '/owner/listings/$referenceId');
-      break;
-  }
-}
+### Badge (on app launch / resume)
 ```
-
----
-
-## Part 4 — Recommended UI Flow
-
-### Notification bell / badge
-
-```
-App launches or resumes
-        ↓
+App opens or resumes
+    ↓
 GET /notifications/unread-count
-        ↓
+    ↓
 Show badge if unread_count > 0
+Also send PATCH /user/location (if renter, with current GPS)
 ```
 
 ### Notification screen
-
 ```
 User opens notification screen
-        ↓
-GET /notifications?page=1    (unread_count is in meta)
-        ↓
-Show list, highlight unread items
-        ↓
+    ↓
+GET /notifications?page=1   → unread_count is in meta
+    ↓
+Render list, highlight is_unread = true items
+    ↓
 User taps a notification
-        ↓
+    ↓
 PATCH /notifications/{id}/read
-Navigate based on `kind` + `reference_id`
+Navigate based on kind + reference_id
 ```
 
-### "Mark all as read" button
-
+### Mark all read button
 ```
 User taps "Mark all read"
-        ↓
+    ↓
 PATCH /notifications/read-all
-        ↓
-Refresh list (or set all is_unread = false locally)
-Set badge to 0
+    ↓
+Set all is_unread = false locally, set badge to 0
 ```
 
 ---
 
-## Part 5 — Notification field reference
+## Part 6 — Notification Field Reference
 
 | Field | Type | Description |
 |---|---|---|
 | `id` | UUID string | Unique notification ID |
-| `kind` | string | One of the kinds listed in Part 3 |
-| `title` | string | Short heading for the notification |
-| `body` | string | Full message content |
-| `time` | string | Human-readable relative time ("2 minutes ago") |
-| `is_unread` | boolean | `true` = not yet read by the user |
-| `reference_id` | UUID string | ID of the related listing |
+| `kind` | string | See Part 3 for all values |
+| `title` | string | Short heading |
+| `body` | string | Full message |
+| `time` | string | Human-readable relative time ("5 minutes ago") |
+| `is_unread` | boolean | `true` = not yet read |
+| `reference_id` | UUID string | Related listing ID |
 
 ---
 
@@ -313,8 +314,9 @@ Set badge to 0
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/v1/device/fcm-token` | Yes | Register / update FCM token |
+| `POST` | `/api/v1/device/fcm-token` | Yes | Register / update FCM token after login |
+| `PATCH` | `/api/v1/user/location` | Yes | Update renter's GPS location |
 | `GET` | `/api/v1/notifications` | Yes | List notifications (paginated) |
-| `GET` | `/api/v1/notifications/unread-count` | Yes | Get unread badge count |
+| `GET` | `/api/v1/notifications/unread-count` | Yes | Badge count only |
 | `PATCH` | `/api/v1/notifications/read-all` | Yes | Mark all as read |
 | `PATCH` | `/api/v1/notifications/{id}/read` | Yes | Mark one as read |

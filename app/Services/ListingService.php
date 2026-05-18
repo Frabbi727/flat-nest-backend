@@ -200,7 +200,22 @@ class ListingService
             );
         }
 
-        return $this->listings->update($listing, ['status' => ListingStatus::Rented]);
+        $updated = $this->listings->update($listing, ['status' => ListingStatus::Rented]);
+
+        $wishlistedUsers = \App\Models\User::whereHas('wishlist', fn ($q) => $q->where('listing_id', $listing->id))->get();
+
+        foreach ($wishlistedUsers as $user) {
+            AppNotification::create([
+                'user_id'      => $user->id,
+                'kind'         => NotificationKind::WishlistListingRented->value,
+                'title'        => 'A saved listing is no longer available',
+                'body'         => '"' . $listing->title . '" has been rented.',
+                'reference_id' => $listing->id,
+            ]);
+            $this->fcm->sendToUser($user->id, 'A saved listing is no longer available', '"' . $listing->title . '" has been rented.');
+        }
+
+        return $updated;
     }
 
     public function update(string $listingId, string $ownerId, array $data): Listing

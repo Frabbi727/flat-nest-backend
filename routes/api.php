@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\GeoController;
+use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\ListingController;
 use App\Http\Controllers\Api\V1\ListingTypeController;
 use App\Http\Controllers\Api\V1\MetaController;
@@ -87,6 +88,9 @@ Route::prefix('v1')->group(function () {
 
         // Device / FCM
         Route::post('/device/fcm-token', [DeviceController::class, 'registerFcmToken']);
+
+        // User
+        Route::patch('/user/location', [UserController::class, 'updateLocation']);
 
         // Notifications
         Route::get  ('/notifications',                  [NotificationController::class, 'index']);

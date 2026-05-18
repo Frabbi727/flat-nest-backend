@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Listings\Tables;
 use App\Enums\ListingStatus;
 use App\Enums\NotificationKind;
 use App\Models\AppNotification;
+use App\Models\User;
 use App\Services\FcmService;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -64,6 +65,38 @@ class ListingsTable
                             'reference_id' => $record->id,
                         ]);
                         app(FcmService::class)->sendToUser($record->owner_id, 'Your listing was approved!', $record->title . ' is now live.');
+
+                        if ($record->coord_y && $record->coord_x) {
+                            $lat      = (float) $record->coord_y;
+                            $lng      = (float) $record->coord_x;
+                            $radius   = 10.0;
+                            $latDelta = $radius / 111.0;
+                            $lngDelta = $radius / (111.0 * cos(deg2rad($lat)));
+
+                            $renters = User::where('role', 'renter')
+                                ->whereNotNull('last_lat')
+                                ->whereNotNull('last_lng')
+                                ->whereBetween('last_lat', [$lat - $latDelta, $lat + $latDelta])
+                                ->whereBetween('last_lng', [$lng - $lngDelta, $lng + $lngDelta])
+                                ->selectRaw("id, (6371 * acos(LEAST(1, GREATEST(-1,
+                                    cos(radians(?)) * cos(radians(last_lat)) *
+                                    cos(radians(last_lng) - radians(?)) +
+                                    sin(radians(?)) * sin(radians(last_lat))
+                                )))) AS distance_km", [$lat, $lng, $lat])
+                                ->having('distance_km', '<=', $radius)
+                                ->get();
+
+                            foreach ($renters as $renter) {
+                                AppNotification::create([
+                                    'user_id'      => $renter->id,
+                                    'kind'         => NotificationKind::NearbyListing->value,
+                                    'title'        => 'New listing near you!',
+                                    'body'         => $record->title . ' is now available nearby.',
+                                    'reference_id' => $record->id,
+                                ]);
+                                app(FcmService::class)->sendToUser($renter->id, 'New listing near you!', $record->title . ' is now available nearby.');
+                            }
+                        }
                     }),
                 Action::make('reject')
                     ->label('Reject')

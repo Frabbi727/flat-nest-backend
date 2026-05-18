@@ -160,7 +160,7 @@ Sign in or register using a Google ID token. Works for both new and returning us
 }
 ```
 
-> Get this token by calling Google Sign-In on the device. Use your **Web Client ID** (`342322851911-da6rkdk2tdh6ltmem5fvij91i5ja5cq7.apps.googleusercontent.com`) in `requestIdToken()`.
+> Get this token by calling Google Sign-In on the device. Use your **Web Client ID** (`638776596608-n6qd2nk8pu2jmoobko04kdoa18kr3564.apps.googleusercontent.com`) in `requestIdToken()`.
 
 **Response 200:**
 ```json
@@ -432,13 +432,13 @@ Fail?   → Clear all tokens → Navigate to Login screen
 
 Use your **Web Client ID** for `requestIdToken()`:
 ```
-342322851911-da6rkdk2tdh6ltmem5fvij91i5ja5cq7.apps.googleusercontent.com
+638776596608-n6qd2nk8pu2jmoobko04kdoa18kr3564.apps.googleusercontent.com
 ```
 
 **Android:**
 ```kotlin
 GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-    .requestIdToken("342322851911-da6rkdk2tdh6ltmem5fvij91i5ja5cq7.apps.googleusercontent.com")
+    .requestIdToken("638776596608-n6qd2nk8pu2jmoobko04kdoa18kr3564.apps.googleusercontent.com")
     .requestEmail()
     .build()
 // account.idToken → send to POST /auth/google
@@ -455,7 +455,7 @@ final auth = await account!.authentication;
 **React Native:**
 ```js
 GoogleSignin.configure({
-  webClientId: '342322851911-da6rkdk2tdh6ltmem5fvij91i5ja5cq7.apps.googleusercontent.com',
+  webClientId: '638776596608-n6qd2nk8pu2jmoobko04kdoa18kr3564.apps.googleusercontent.com',
 });
 const userInfo = await GoogleSignin.signIn();
 // userInfo.idToken → send to POST /auth/google

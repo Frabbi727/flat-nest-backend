@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Enums\UserRole;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RegisterDetailsRequest extends FormRequest
@@ -10,9 +11,10 @@ class RegisterDetailsRequest extends FormRequest
 
     public function rules(): array
     {
+        $validRoles = implode(',', array_column(UserRole::cases(), 'value'));
+
         return [
-            'role'          => 'required|in:renter,owner',
-            'date_of_birth' => 'nullable|date|before:-18 years',
+            'role' => "required|in:{$validRoles}",
         ];
     }
 }

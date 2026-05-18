@@ -17,4 +17,12 @@ class RegisterRequest extends FormRequest
             'phone'    => 'required|regex:/^01[3-9]\d{8}$/|unique:users',
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'email.unique' => 'An account with this email already exists. Please log in, or use Google Sign-In if you registered with Google.',
+            'phone.unique' => 'This phone number is already registered to another account.',
+        ];
+    }
 }

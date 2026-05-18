@@ -13,6 +13,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 class AuthController extends Controller
@@ -26,8 +27,12 @@ class AuthController extends Controller
 
     public function registerDetails(RegisterDetailsRequest $request): JsonResponse
     {
-        $this->auth->updateDetails($request->user(), $request->validated());
-        return ApiResponse::success(['registration_step' => 3], 'Details saved');
+        try {
+            $this->auth->updateDetails($request->user(), $request->validated());
+            return ApiResponse::success(['registration_step' => 3], 'Details saved');
+        } catch (ConflictHttpException $e) {
+            return ApiResponse::error($e->getMessage(), 'ROLE_LOCKED', 409);
+        }
     }
 
     public function registerAvatar(RegisterAvatarRequest $request): JsonResponse
@@ -50,7 +55,8 @@ class AuthController extends Controller
         try {
             return ApiResponse::success($this->auth->login($request->email, $request->password));
         } catch (UnauthorizedHttpException $e) {
-            return ApiResponse::error($e->getMessage(), 'INVALID_CREDENTIALS', 401);
+            $code = str_contains($e->getMessage(), 'Google Sign-In') ? 'USE_GOOGLE_SIGN_IN' : 'INVALID_CREDENTIALS';
+            return ApiResponse::error($e->getMessage(), $code, 401);
         }
     }
 

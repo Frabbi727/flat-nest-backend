@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Helpers\ApiResponse;
 use App\Models\ListingFacing;
@@ -11,6 +12,14 @@ use Illuminate\Support\Facades\Cache;
 
 class MetaController extends Controller
 {
+    public function roles(): JsonResponse
+    {
+        $roles = collect(UserRole::cases())
+            ->map(fn ($role) => ['value' => $role->value, 'label' => $role->label()]);
+
+        return ApiResponse::success($roles);
+    }
+
     public function types(): JsonResponse
     {
         $types = Cache::remember('meta_listing_types', 86400, function () {

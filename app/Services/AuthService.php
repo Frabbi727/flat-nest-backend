@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
 
 class AuthService
@@ -29,9 +30,12 @@ class AuthService
 
     public function updateDetails(User $user, array $data): User
     {
+        if ($user->is_complete && $user->role !== $data['role']) {
+            throw new ConflictHttpException('Your account role is already set and cannot be changed.');
+        }
+
         return $this->users->update($user, [
-            'role'          => $data['role'],
-            'date_of_birth' => $data['date_of_birth'] ?? null,
+            'role' => $data['role'],
         ]);
     }
 
@@ -82,6 +86,10 @@ class AuthService
     public function login(string $email, string $password): array
     {
         $user = $this->users->findByEmail($email);
+
+        if ($user && is_null($user->password_hash)) {
+            throw new UnauthorizedHttpException('', 'This account uses Google Sign-In. Please sign in with Google.');
+        }
 
         if (! $user || ! Hash::check($password, $user->password_hash)) {
             throw new UnauthorizedHttpException('', 'Invalid credentials');

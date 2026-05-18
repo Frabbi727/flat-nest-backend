@@ -33,6 +33,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/geo/unions/{upazila_id}',     [GeoController::class, 'unions']);
 
     // Meta — public
+    Route::get('/meta/roles',           [MetaController::class, 'roles']);
     Route::get('/meta/listing-types',   [MetaController::class, 'types']);
     Route::get('/meta/listing-facings', [MetaController::class, 'facings']);
 

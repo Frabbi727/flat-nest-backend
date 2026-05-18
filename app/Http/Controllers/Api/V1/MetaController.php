@@ -24,7 +24,8 @@ class MetaController extends Controller
     {
         $types = Cache::remember('meta_listing_types', 86400, function () {
             return ListingType::orderBy('label')->get(['id', 'name', 'label'])
-                ->map(fn ($t) => ['id' => $t->id, 'label' => $t->label, 'slug' => $t->name]);
+                ->map(fn ($t) => ['id' => $t->id, 'label' => $t->label, 'slug' => $t->name])
+                ->values()->toArray();
         });
 
         return ApiResponse::success($types);
@@ -33,7 +34,7 @@ class MetaController extends Controller
     public function facings(): JsonResponse
     {
         $facings = Cache::remember('meta_listing_facings', 86400, function () {
-            return ListingFacing::orderBy('id')->get(['id', 'label', 'slug']);
+            return ListingFacing::orderBy('id')->get(['id', 'label', 'slug'])->toArray();
         });
 
         return ApiResponse::success($facings);

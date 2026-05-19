@@ -181,7 +181,10 @@ class ListingService
             'body'         => '"' . $listing->title . '" has been submitted and is awaiting admin review.',
             'reference_id' => $listing->id,
         ]);
-        $this->fcm->sendToUser($listing->owner_id, 'Listing submitted for review', '"' . $listing->title . '" is awaiting admin review.');
+        $this->fcm->sendToUser($listing->owner_id, 'Listing submitted for review', '"' . $listing->title . '" is awaiting admin review.', [
+            'kind'         => NotificationKind::ListingSubmitted->value,
+            'reference_id' => $listing->id,
+        ]);
 
         return $updated;
     }
@@ -212,7 +215,10 @@ class ListingService
                 'body'         => '"' . $listing->title . '" has been rented.',
                 'reference_id' => $listing->id,
             ]);
-            $this->fcm->sendToUser($user->id, 'A saved listing is no longer available', '"' . $listing->title . '" has been rented.');
+            $this->fcm->sendToUser($user->id, 'A saved listing is no longer available', '"' . $listing->title . '" has been rented.', [
+                'kind'         => NotificationKind::WishlistListingRented->value,
+                'reference_id' => $listing->id,
+            ]);
         }
 
         return $updated;
@@ -300,7 +306,10 @@ class ListingService
             'body'         => 'You edited "' . $listing->title . '". It has been sent for re-approval and is temporarily hidden from the feed.',
             'reference_id' => $listing->id,
         ]);
-        $this->fcm->sendToUser($listing->owner_id, 'Your listing is under re-review.', 'You edited "' . $listing->title . '". It is temporarily hidden from the feed.');
+        $this->fcm->sendToUser($listing->owner_id, 'Your listing is under re-review.', 'You edited "' . $listing->title . '". It is temporarily hidden from the feed.', [
+            'kind'         => NotificationKind::ListingReview->value,
+            'reference_id' => $listing->id,
+        ]);
     }
 
     private function attachPhotos(Listing $listing, array $photos, int $startPosition = 0): void

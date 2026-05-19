@@ -99,6 +99,7 @@ Future<void> registerFcmToken(String accessToken) async {
   );
 }
 
+
 // When Firebase rotates the token
 FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
   final accessToken = await storage.read(key: 'access_token');

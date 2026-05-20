@@ -357,47 +357,101 @@ function Select({value,onChange,options,th}){
   </select>;
 }
 
+// ─── section divider ────────────────────────────────────────────
+function SectionLabel({label,th}){
+  return<div style={{gridColumn:'1/-1',fontSize:11.5,fontWeight:700,letterSpacing:.6,textTransform:'uppercase',color:th.primary,padding:'8px 0 0',borderTop:`1px solid ${th.border}`,marginTop:4}}>{label}</div>;
+}
+
 // ─── edit listing modal ─────────────────────────────────────────
-function EditListingModal({th,listing,onSave,onClose,loading}){
+function EditListingModal({th,listing,onSave,onClose,loading,metaTypes,metaFacings}){
   const[f,setF]=React.useState({
-    title:       listing.title||'',
-    area:        listing.area||'',
-    price:       listing.price||0,
-    deposit:     listing.deposit||'',
-    beds:        listing.beds||0,
-    baths:       listing.baths||0,
-    size:        listing.size||'',
-    description: listing.description||'',
-    status:      listing.status||'pending',
+    title:            listing.title||'',
+    area:             listing.area||'',
+    road_and_house:   listing.road_and_house||'',
+    price:            listing.price||0,
+    deposit:          listing.deposit||'',
+    beds:             listing.beds||0,
+    baths:            listing.baths||0,
+    size:             listing.size||'',
+    floor_no:         listing.floor_no||'',
+    listing_type_id:  listing.listing_type_id||'',
+    facing_id:        listing.facing_id||'',
+    available_from:   listing.available_from||'',
+    description:      listing.description||'',
+    road:             listing.road||'',
+    house_name:       listing.house_name||'',
+    block:            listing.block||'',
+    section:          listing.section||'',
+    coord_x:          listing.coord_x||'',
+    coord_y:          listing.coord_y||'',
+    owner_name:       listing.owner_name||'',
+    owner_phone:      listing.owner_phone||'',
+    owner_alt_phone:  listing.owner_alt_phone||'',
+    owner_email:      listing.owner_email||'',
+    preferred_contact:listing.preferred_contact||'',
+    status:           listing.status||'pending',
     rejection_reason: listing.rejection_reason||'',
   });
   const set=(k,v)=>setF(p=>({...p,[k]:v}));
   const statusOpts=[{value:'draft',label:'Draft'},{value:'pending',label:'Pending Review'},{value:'active',label:'Active'},{value:'rented',label:'Rented'},{value:'rejected',label:'Rejected'}];
+  const typeOpts=[{value:'',label:'— Select type —'},...(metaTypes||[]).map(t=>({value:String(t.id),label:t.label}))];
+  const facingOpts=[{value:'',label:'— Select facing —'},...(metaFacings||[]).map(f=>({value:String(f.id),label:f.label}))];
+  const contactOpts=[{value:'',label:'— Not set —'},{value:'call',label:'Call'},{value:'whatsapp',label:'WhatsApp'},{value:'both',label:'Both'}];
 
   return(
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
-      <div style={{animation:'fadeIn .2s ease',width:'100%',maxWidth:600,maxHeight:'90vh',overflowY:'auto'}}>
-        <Card th={th}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+      <div style={{animation:'fadeIn .2s ease',width:'100%',maxWidth:680,maxHeight:'92vh',display:'flex',flexDirection:'column'}}>
+        <Card th={th} pad={0} style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          <div style={{padding:'18px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${th.border}`,flexShrink:0}}>
             <div>
               <div style={{fontSize:16,fontWeight:700,color:th.ink}}>Edit listing</div>
               <div style={{fontSize:12,color:th.inkSoft,marginTop:2,fontFamily:'ui-monospace,monospace'}}>{listing.id}</div>
             </div>
             <button onClick={onClose} style={{width:30,height:30,borderRadius:8,background:'transparent',border:`1px solid ${th.border}`,color:th.inkSoft,display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="x" size={13}/></button>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-            <div style={{gridColumn:'1/-1'}}><Field label="Title" th={th}><Input value={f.title} onChange={v=>set('title',v)} placeholder="Listing title" th={th} required/></Field></div>
-            <Field label="Area" th={th}><Input value={f.area} onChange={v=>set('area',v)} placeholder="e.g. Mirpur, Dhaka" th={th}/></Field>
-            <Field label="Status" th={th}><Select value={f.status} onChange={v=>set('status',v)} options={statusOpts} th={th}/></Field>
-            <Field label="Price (৳/month)" th={th}><Input value={f.price} onChange={v=>set('price',v)} type="number" placeholder="0" th={th}/></Field>
-            <Field label="Deposit (৳)" th={th}><Input value={f.deposit} onChange={v=>set('deposit',v)} type="number" placeholder="Optional" th={th}/></Field>
-            <Field label="Beds" th={th}><Input value={f.beds} onChange={v=>set('beds',v)} type="number" placeholder="0" th={th}/></Field>
-            <Field label="Baths" th={th}><Input value={f.baths} onChange={v=>set('baths',v)} type="number" placeholder="0" th={th}/></Field>
-            <Field label="Size (sq ft)" th={th}><Input value={f.size} onChange={v=>set('size',v)} type="number" placeholder="Optional" th={th}/></Field>
-            <div style={{gridColumn:'1/-1'}}><Field label="Description" th={th}><Textarea value={f.description} onChange={v=>set('description',v)} rows={3} placeholder="Listing description…" th={th}/></Field></div>
-            {f.status==='rejected'&&<div style={{gridColumn:'1/-1'}}><Field label="Rejection reason" th={th}><Textarea value={f.rejection_reason} onChange={v=>set('rejection_reason',v)} rows={2} placeholder="Reason shown to the owner…" th={th}/></Field></div>}
+          <div style={{flex:1,overflowY:'auto',padding:20}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              {/* Basic info */}
+              <div style={{gridColumn:'1/-1'}}><Field label="Title" th={th}><Input value={f.title} onChange={v=>set('title',v)} placeholder="Listing title" th={th} required/></Field></div>
+              <Field label="Status" th={th}><Select value={f.status} onChange={v=>set('status',v)} options={statusOpts} th={th}/></Field>
+              <Field label="Listing Type" th={th}><Select value={String(f.listing_type_id||'')} onChange={v=>set('listing_type_id',v?Number(v):null)} options={typeOpts} th={th}/></Field>
+
+              {/* Property details */}
+              <SectionLabel label="Property Details" th={th}/>
+              <Field label="Price (৳/month)" th={th}><Input value={f.price} onChange={v=>set('price',v)} type="number" placeholder="0" th={th}/></Field>
+              <Field label="Deposit (৳)" th={th}><Input value={f.deposit} onChange={v=>set('deposit',v)} type="number" placeholder="Optional" th={th}/></Field>
+              <Field label="Beds" th={th}><Input value={f.beds} onChange={v=>set('beds',v)} type="number" placeholder="0" th={th}/></Field>
+              <Field label="Baths" th={th}><Input value={f.baths} onChange={v=>set('baths',v)} type="number" placeholder="0" th={th}/></Field>
+              <Field label="Size (sq ft)" th={th}><Input value={f.size} onChange={v=>set('size',v)} type="number" placeholder="Optional" th={th}/></Field>
+              <Field label="Floor No" th={th}><Input value={f.floor_no} onChange={v=>set('floor_no',v)} type="number" placeholder="Optional" th={th}/></Field>
+              <Field label="Facing" th={th}><Select value={String(f.facing_id||'')} onChange={v=>set('facing_id',v?Number(v):null)} options={facingOpts} th={th}/></Field>
+              <Field label="Available From" th={th}><Input value={f.available_from} onChange={v=>set('available_from',v)} type="date" th={th}/></Field>
+              <div style={{gridColumn:'1/-1'}}><Field label="Description" th={th}><Textarea value={f.description} onChange={v=>set('description',v)} rows={3} placeholder="Listing description…" th={th}/></Field></div>
+
+              {/* Address */}
+              <SectionLabel label="Address" th={th}/>
+              <Field label="Area" th={th}><Input value={f.area} onChange={v=>set('area',v)} placeholder="e.g. Mirpur, Dhaka" th={th}/></Field>
+              <Field label="Road & House" th={th}><Input value={f.road_and_house} onChange={v=>set('road_and_house',v)} placeholder="Road/House" th={th}/></Field>
+              <Field label="Road" th={th}><Input value={f.road} onChange={v=>set('road',v)} placeholder="Road name" th={th}/></Field>
+              <Field label="House Name" th={th}><Input value={f.house_name} onChange={v=>set('house_name',v)} placeholder="House/building name" th={th}/></Field>
+              <Field label="Block" th={th}><Input value={f.block} onChange={v=>set('block',v)} placeholder="Block" th={th}/></Field>
+              <Field label="Section" th={th}><Input value={f.section} onChange={v=>set('section',v)} placeholder="Section" th={th}/></Field>
+              <Field label="Longitude (coord_x)" th={th}><Input value={f.coord_x} onChange={v=>set('coord_x',v)} type="number" placeholder="90.xxx" th={th}/></Field>
+              <Field label="Latitude (coord_y)" th={th}><Input value={f.coord_y} onChange={v=>set('coord_y',v)} type="number" placeholder="23.xxx" th={th}/></Field>
+
+              {/* Owner info */}
+              <SectionLabel label="Owner Contact" th={th}/>
+              <Field label="Owner Name" th={th}><Input value={f.owner_name} onChange={v=>set('owner_name',v)} placeholder="Name" th={th}/></Field>
+              <Field label="Owner Phone" th={th}><Input value={f.owner_phone} onChange={v=>set('owner_phone',v)} placeholder="01XXXXXXXXX" th={th}/></Field>
+              <Field label="Alt Phone" th={th}><Input value={f.owner_alt_phone} onChange={v=>set('owner_alt_phone',v)} placeholder="Optional" th={th}/></Field>
+              <Field label="Owner Email" th={th}><Input value={f.owner_email} onChange={v=>set('owner_email',v)} type="email" placeholder="email@example.com" th={th}/></Field>
+              <div style={{gridColumn:'1/-1'}}><Field label="Preferred Contact" th={th}><Select value={f.preferred_contact||''} onChange={v=>set('preferred_contact',v||null)} options={contactOpts} th={th}/></Field></div>
+
+              {/* Rejection */}
+              {f.status==='rejected'&&<div style={{gridColumn:'1/-1'}}><Field label="Rejection reason" th={th}><Textarea value={f.rejection_reason} onChange={v=>set('rejection_reason',v)} rows={2} placeholder="Reason shown to the owner…" th={th}/></Field></div>}
+            </div>
           </div>
-          <div style={{display:'flex',gap:8,marginTop:20}}>
+          <div style={{padding:'14px 20px',borderTop:`1px solid ${th.border}`,display:'flex',gap:8,flexShrink:0}}>
             <button onClick={()=>onSave(f)} disabled={loading} style={{flex:1,height:40,borderRadius:10,background:th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:13.5,cursor:loading?'default':'pointer',opacity:loading?.7:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,boxShadow:`0 4px 12px ${alpha(th.primary,.25)}`}}>
               {loading?<Icon name="spin" size={14}/>:<Icon name="save" size={14}/>}Save changes
             </button>
@@ -712,7 +766,7 @@ function PageDashboard({th,setPage,api}){
 }
 
 // ─── listings page ──────────────────────────────────────────────
-function PageListings({th,api}){
+function PageListings({th,api,onViewDetail,metaTypes,metaFacings}){
   const toast=useToast();
   const[filter,setFilter]=React.useState('all');
   const[search,setSearch]=React.useState('');
@@ -751,15 +805,31 @@ function PageListings({th,api}){
     setActing(id+'e');
     try{
       await api.patch(`/admin/listings/${id}`,{
-        title:       fields.title,
-        area:        fields.area,
-        price:       Number(fields.price)||0,
-        deposit:     fields.deposit!==''?Number(fields.deposit):null,
-        beds:        Number(fields.beds)||0,
-        baths:       Number(fields.baths)||0,
-        size:        fields.size!==''?Number(fields.size):null,
-        description: fields.description||null,
-        status:      fields.status,
+        title:            fields.title,
+        area:             fields.area,
+        road_and_house:   fields.road_and_house||null,
+        price:            Number(fields.price)||0,
+        deposit:          fields.deposit!==''?Number(fields.deposit):null,
+        beds:             Number(fields.beds)||0,
+        baths:            Number(fields.baths)||0,
+        size:             fields.size!==''?Number(fields.size):null,
+        floor_no:         fields.floor_no!==''?Number(fields.floor_no):null,
+        listing_type_id:  fields.listing_type_id||null,
+        facing_id:        fields.facing_id||null,
+        available_from:   fields.available_from||null,
+        description:      fields.description||null,
+        road:             fields.road||null,
+        house_name:       fields.house_name||null,
+        block:            fields.block||null,
+        section:          fields.section||null,
+        coord_x:          fields.coord_x!==''?Number(fields.coord_x):null,
+        coord_y:          fields.coord_y!==''?Number(fields.coord_y):null,
+        owner_name:       fields.owner_name||null,
+        owner_phone:      fields.owner_phone||null,
+        owner_alt_phone:  fields.owner_alt_phone||null,
+        owner_email:      fields.owner_email||null,
+        preferred_contact:fields.preferred_contact||null,
+        status:           fields.status,
         rejection_reason: fields.status==='rejected'?(fields.rejection_reason||null):null,
       });
       toast('Listing updated.','success');
@@ -785,7 +855,7 @@ function PageListings({th,api}){
   return(
     <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
       {rejectTarget&&<RejectModal th={th} loading={acting===rejectTarget+'r'} onConfirm={r=>reject(rejectTarget,r)} onClose={()=>setRejectTarget(null)}/>}
-      {editTarget&&<EditListingModal th={th} listing={editTarget} loading={acting===editTarget.id+'e'} onSave={f=>save(editTarget.id,f)} onClose={()=>setEditTarget(null)}/>}
+      {editTarget&&<EditListingModal th={th} listing={editTarget} loading={acting===editTarget.id+'e'} onSave={f=>save(editTarget.id,f)} onClose={()=>setEditTarget(null)} metaTypes={metaTypes} metaFacings={metaFacings}/>}
       <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <Tabs th={th} value={filter} onChange={v=>{setFilter(v);setPage(1);}} options={tabs}/>
         <div style={{flex:1}}/>
@@ -839,6 +909,7 @@ function PageListings({th,api}){
                       {(l.status==='pending'||l.status==='active')&&(
                         <IBtn th={th} icon="x" tone="danger" title="Reject" loading={acting===l.id+'r'} onClick={()=>setRejectTarget(l.id)}/>
                       )}
+                      <IBtn th={th} icon="eye" title="View details" onClick={()=>onViewDetail&&onViewDetail(l.id)}/>
                       <IBtn th={th} icon="edit" tone="primary" title="Edit" loading={acting===l.id+'e'} onClick={()=>setEditTarget(l)}/>
                       <IBtn th={th} icon="trash" tone="danger" title="Delete" onClick={()=>del(l.id)}/>
                     </div>
@@ -856,6 +927,187 @@ function PageListings({th,api}){
           </div>
         )}
         <Pagination meta={meta} onPage={p=>{setPage(p);load(p);}} th={th}/>
+      </Card>
+    </div>
+  );
+}
+
+// ─── listing detail page ────────────────────────────────────────
+function PageListingDetail({th,api,listingId,onBack,metaTypes,metaFacings}){
+  const toast=useToast();
+  const[data,setData]=React.useState(null);
+  const[loading,setLoading]=React.useState(true);
+  const[editTarget,setEditTarget]=React.useState(null);
+  const[acting,setActing]=React.useState(null);
+
+  const load=()=>{
+    setLoading(true);
+    api.get(`/admin/listings/${listingId}`).then(r=>{setData(r.data);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  };
+  React.useEffect(()=>{load();},[listingId]);
+
+  const save=async(fields)=>{
+    setActing('e');
+    try{
+      await api.patch(`/admin/listings/${listingId}`,{
+        title:fields.title,area:fields.area,road_and_house:fields.road_and_house||null,
+        price:Number(fields.price)||0,deposit:fields.deposit!==''?Number(fields.deposit):null,
+        beds:Number(fields.beds)||0,baths:Number(fields.baths)||0,
+        size:fields.size!==''?Number(fields.size):null,floor_no:fields.floor_no!==''?Number(fields.floor_no):null,
+        listing_type_id:fields.listing_type_id||null,facing_id:fields.facing_id||null,
+        available_from:fields.available_from||null,description:fields.description||null,
+        road:fields.road||null,house_name:fields.house_name||null,block:fields.block||null,section:fields.section||null,
+        coord_x:fields.coord_x!==''?Number(fields.coord_x):null,coord_y:fields.coord_y!==''?Number(fields.coord_y):null,
+        owner_name:fields.owner_name||null,owner_phone:fields.owner_phone||null,
+        owner_alt_phone:fields.owner_alt_phone||null,owner_email:fields.owner_email||null,
+        preferred_contact:fields.preferred_contact||null,
+        status:fields.status,rejection_reason:fields.status==='rejected'?(fields.rejection_reason||null):null,
+      });
+      toast('Listing updated.','success');setEditTarget(null);load();
+    }catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  const approve=async()=>{
+    setActing('a');
+    try{await api.post(`/admin/listings/${listingId}/approve`);toast('Listing approved!','success');load();}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  function InfoRow({icon,label,value,th:t}){
+    if(!value&&value!==0)return null;
+    return<div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 0'}}>
+      <span style={{color:t.inkSoft,flexShrink:0,marginTop:1}}><Icon name={icon||'info'} size={14}/></span>
+      <div><div style={{fontSize:11,color:t.inkSoft,fontWeight:600,letterSpacing:.3,textTransform:'uppercase',marginBottom:2}}>{label}</div>
+      <div style={{fontSize:13.5,color:t.ink,fontWeight:500}}>{value}</div></div>
+    </div>;
+  }
+
+  if(loading)return<div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+    <Skeleton h={28} w={200}/><Skeleton h={200}/><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}><Skeleton h={180}/><Skeleton h={180}/></div>
+  </div>;
+
+  if(!data)return<div style={{padding:28,textAlign:'center',color:th.inkSoft}}>Listing not found.</div>;
+
+  const d=data;
+  const photos=d.photos||[];
+  const amenities=d.amenities||[];
+  const loc=[d.division?.name,d.district?.name,d.upazila?.name,d.union?.name].filter(Boolean).join(' → ');
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {editTarget&&<EditListingModal th={th} listing={editTarget} loading={acting==='e'} onSave={save} onClose={()=>setEditTarget(null)} metaTypes={metaTypes} metaFacings={metaFacings}/>}
+
+      {/* Back + title bar */}
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 14px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.surface,color:th.inkMid,cursor:'pointer',fontSize:13,fontWeight:500}}><Icon name="chevLeft" size={14}/>Back to listings</button>
+        <div style={{flex:1}}/>
+        {(d.status==='pending'||d.status==='rejected')&&<button onClick={approve} disabled={acting==='a'} style={{height:36,padding:'0 18px',borderRadius:9,border:'none',background:th.success,color:'#fff',fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:6,cursor:acting==='a'?'default':'pointer',opacity:acting==='a'?.7:1,boxShadow:`0 3px 10px ${alpha(th.success,.3)}`}}>{acting==='a'?<Icon name="spin" size={14}/>:<Icon name="check" size={14}/>}Approve</button>}
+        <button onClick={()=>setEditTarget(d)} style={{height:36,padding:'0 18px',borderRadius:9,border:`1.5px solid ${th.primary}`,background:th.primarySoft,color:th.primaryInk,fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}><Icon name="edit" size={14}/>Edit</button>
+      </div>
+
+      {/* Header card */}
+      <Card th={th}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:6}}>
+              <StatusBadge status={d.status} th={th}/>
+              {d.listing_type&&<span style={{padding:'2px 8px',borderRadius:999,background:th.primarySoft,color:th.primaryInk,fontSize:11.5,fontWeight:600}}>{d.listing_type.label}</span>}
+            </div>
+            <div style={{fontSize:22,fontWeight:700,color:th.ink,letterSpacing:-.4,lineHeight:1.3}}>{d.title}</div>
+            <div style={{fontSize:12.5,color:th.inkSoft,marginTop:6,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              {d.area&&<span style={{display:'inline-flex',alignItems:'center',gap:3}}><Icon name="pin" size={11}/>{d.area}</span>}
+              <span>·</span><span style={{fontVariantNumeric:'tabular-nums'}}>{bdt(d.price)}/mo</span>
+              {d.deposit&&<><span>·</span><span>Deposit: {bdt(d.deposit)}</span></>}
+              <span>·</span><span>{d.views||0} views</span>
+            </div>
+            <div style={{fontSize:11,color:th.inkFaint,fontFamily:'ui-monospace,monospace',marginTop:6}}>ID: {d.id}</div>
+          </div>
+          <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{fontSize:28,fontWeight:700,color:th.ink,letterSpacing:-.4,fontVariantNumeric:'tabular-nums'}}>{bdt(d.price)}</div>
+            <div style={{fontSize:11.5,color:th.inkSoft,marginTop:2}}>per month</div>
+          </div>
+        </div>
+        {d.status==='rejected'&&d.rejection_reason&&<div style={{marginTop:14,padding:'10px 14px',borderRadius:10,background:th.errorSoft,border:`1px solid ${alpha(th.error,.2)}`,display:'flex',alignItems:'flex-start',gap:8}}>
+          <Icon name="warn" size={14} style={{color:th.error,marginTop:2,flexShrink:0}}/>
+          <div><div style={{fontSize:11,fontWeight:700,color:th.error,letterSpacing:.3,textTransform:'uppercase',marginBottom:2}}>Rejection Reason</div>
+          <div style={{fontSize:13,color:th.ink,lineHeight:1.5}}>{d.rejection_reason}</div></div>
+        </div>}
+      </Card>
+
+      {/* Photos */}
+      {photos.length>0&&<Card th={th}>
+        <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:14,display:'flex',alignItems:'center',gap:6}}><Icon name="eye" size={15}/>Photos ({photos.length})</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10}}>
+          {photos.map((p,i)=><div key={p.id||i} style={{position:'relative',paddingTop:'75%',borderRadius:12,overflow:'hidden',background:th.bgAlt}}>
+            <img src={p.url} alt={`Photo ${i+1}`} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
+            <div style={{position:'absolute',bottom:6,right:6,background:'rgba(0,0,0,.6)',color:'#fff',fontSize:10,fontWeight:600,padding:'2px 6px',borderRadius:4}}>{i+1}/{photos.length}</div>
+          </div>)}
+        </div>
+      </Card>}
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        {/* Property details */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="building" size={15}/>Property Details</div>
+          <InfoRow icon="listing" label="Type" value={d.listing_type?.label} th={th}/>
+          <InfoRow icon="info" label="Price" value={bdt(d.price)+'/month'} th={th}/>
+          <InfoRow icon="info" label="Deposit" value={d.deposit?bdt(d.deposit):null} th={th}/>
+          <InfoRow icon="building" label="Beds" value={d.beds} th={th}/>
+          <InfoRow icon="building" label="Baths" value={d.baths} th={th}/>
+          <InfoRow icon="info" label="Size" value={d.size?d.size+' sq ft':null} th={th}/>
+          <InfoRow icon="building" label="Floor" value={d.floor_no!=null?'Floor '+d.floor_no:null} th={th}/>
+          <InfoRow icon="info" label="Facing" value={d.facing?.label} th={th}/>
+          <InfoRow icon="info" label="Available From" value={d.available_from} th={th}/>
+        </Card>
+
+        {/* Location */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="pin" size={15}/>Location</div>
+          {loc&&<InfoRow icon="pin" label="Region" value={loc} th={th}/>}
+          <InfoRow icon="pin" label="Area" value={d.area} th={th}/>
+          <InfoRow icon="info" label="Road & House" value={d.road_and_house} th={th}/>
+          <InfoRow icon="info" label="Road" value={d.road} th={th}/>
+          <InfoRow icon="building" label="House Name" value={d.house_name} th={th}/>
+          <InfoRow icon="info" label="Block" value={d.block} th={th}/>
+          <InfoRow icon="info" label="Section" value={d.section} th={th}/>
+          {(d.coord_x||d.coord_y)&&<InfoRow icon="pin" label="Coordinates" value={`${d.coord_y||'—'}, ${d.coord_x||'—'}`} th={th}/>}
+        </Card>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        {/* Owner contact */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="users" size={15}/>Owner Contact</div>
+          {d.owner&&<div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:`1px solid ${th.borderSoft}`,marginBottom:4}}>
+            <Avt name={d.owner.name} size={36}/>
+            <div><div style={{fontSize:13.5,fontWeight:600,color:th.ink}}>{d.owner.name}</div>
+            <div style={{fontSize:12,color:th.inkSoft}}>{d.owner.email}</div></div>
+          </div>}
+          <InfoRow icon="users" label="Contact Name" value={d.owner_name} th={th}/>
+          <InfoRow icon="phone" label="Phone" value={d.owner_phone} th={th}/>
+          <InfoRow icon="phone" label="Alt Phone" value={d.owner_alt_phone} th={th}/>
+          <InfoRow icon="mail" label="Email" value={d.owner_email} th={th}/>
+          <InfoRow icon="info" label="Preferred Contact" value={d.preferred_contact?cap(d.preferred_contact):null} th={th}/>
+        </Card>
+
+        {/* Amenities + description */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="check" size={15}/>Amenities & Description</div>
+          {amenities.length>0?<div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
+            {amenities.map(a=><span key={a.id} style={{padding:'4px 10px',borderRadius:999,background:th.primarySoft,color:th.primaryInk,fontSize:12,fontWeight:600}}>{a.label||a.name}</span>)}
+          </div>:<div style={{fontSize:13,color:th.inkSoft,marginBottom:14}}>No amenities listed.</div>}
+          {d.description&&<div style={{padding:'12px 14px',borderRadius:10,background:th.bgAlt,border:`1px solid ${th.border}`,fontSize:13.5,color:th.ink,lineHeight:1.65,whiteSpace:'pre-wrap'}}>{d.description}</div>}
+        </Card>
+      </div>
+
+      {/* Timestamps */}
+      <Card th={th} pad={14}>
+        <div style={{display:'flex',gap:24,fontSize:12,color:th.inkSoft}}>
+          <span>Created: {d.created_at?new Date(d.created_at).toLocaleString():'\u2014'}</span>
+          <span>Updated: {d.updated_at?new Date(d.updated_at).toLocaleString():'\u2014'}</span>
+        </div>
       </Card>
     </div>
   );
@@ -1258,7 +1510,10 @@ function App(){
   const[user,setUser]=React.useState(()=>{try{return JSON.parse(localStorage.getItem('fn_user')||'null');}catch{return null;}});
   const[dark,setDark]=React.useState(()=>localStorage.getItem('fn_dark')!=='false');
   const[page,setPage]=React.useState('dashboard');
+  const[detailId,setDetailId]=React.useState(null);
   const[counts,setCounts]=React.useState({pending:0,listings:0,users:0});
+  const[metaTypes,setMetaTypes]=React.useState([]);
+  const[metaFacings,setMetaFacings]=React.useState([]);
 
   const th=React.useMemo(()=>theme(dark),[dark]);
 
@@ -1278,6 +1533,7 @@ function App(){
     setToken('');setUser(null);
   };
 
+  // Fetch dashboard counts
   React.useEffect(()=>{
     if(!token)return;
     api.get('/admin/dashboard').then(r=>{
@@ -1286,29 +1542,47 @@ function App(){
     }).catch(()=>{});
   },[token,page]);
 
+  // Fetch meta data for dropdowns (listing types + facings)
+  React.useEffect(()=>{
+    if(!token)return;
+    api.get('/listing-types').then(r=>setMetaTypes(r.data||[])).catch(()=>{});
+    api.get('/meta/listing-facings').then(r=>setMetaFacings(r.data||[])).catch(()=>{});
+  },[token]);
+
+  // Navigate to page and clear detail
+  const navPage=(p)=>{setPage(p);setDetailId(null);};
+  // Navigate to listing detail
+  const viewDetail=(id)=>{setDetailId(id);setPage('listing-detail');};
+  const backToListings=()=>{setPage('listings');setDetailId(null);};
+
   if(!token)return<ToastProvider><LoginPage th={th} onLogin={handleLogin}/></ToastProvider>;
 
   const pagesMeta={
-    dashboard:{title:'Dashboard',   crumb:'Overview'},
-    approvals:{title:'Approvals',   crumb:'Listings · Pending review'},
-    listings: {title:'Listings',    crumb:'Listings · All'},
-    users:    {title:'Users',       crumb:'People · All'},
-    analytics:{title:'Analytics',   crumb:'Insights · Last 14 days'},
+    dashboard:       {title:'Dashboard',        crumb:'Overview'},
+    approvals:       {title:'Approvals',        crumb:'Listings · Pending review'},
+    listings:        {title:'Listings',          crumb:'Listings · All'},
+    'listing-detail':{title:'Listing Details',  crumb:'Listings · Detail'},
+    users:           {title:'Users',             crumb:'People · All'},
+    analytics:       {title:'Analytics',         crumb:'Insights · Last 14 days'},
   };
   const m=pagesMeta[page]||{title:page,crumb:''};
 
   const pages={
-    dashboard:<PageDashboard th={th} setPage={setPage} api={api}/>,
+    dashboard:<PageDashboard th={th} setPage={navPage} api={api}/>,
     approvals:<PageApprovals th={th} api={api}/>,
-    listings: <PageListings  th={th} api={api}/>,
+    listings: <PageListings  th={th} api={api} onViewDetail={viewDetail} metaTypes={metaTypes} metaFacings={metaFacings}/>,
+    'listing-detail':detailId?<PageListingDetail th={th} api={api} listingId={detailId} onBack={backToListings} metaTypes={metaTypes} metaFacings={metaFacings}/>:null,
     users:    <PageUsers     th={th} api={api}/>,
     analytics:<PageAnalytics th={th} api={api}/>,
   };
 
+  // For sidebar highlight, treat listing-detail as listings
+  const sidebarPage=page==='listing-detail'?'listings':page;
+
   return(
     <ToastProvider>
       <div style={{minHeight:'100vh',background:th.bg,color:th.ink,fontFamily:FN_FONT,display:'flex'}}>
-        <Sidebar th={th} page={page} setPage={setPage} counts={counts} user={user}/>
+        <Sidebar th={th} page={sidebarPage} setPage={navPage} counts={counts} user={user}/>
         <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
           <TopBar th={th} title={m.title} crumb={m.crumb} dark={dark} toggleDark={()=>setDark(d=>!d)} onLogout={handleLogout}/>
           <div style={{flex:1,overflowY:'auto'}}>{pages[page]}</div>

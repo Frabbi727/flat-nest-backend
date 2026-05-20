@@ -104,6 +104,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('admin')->prefix('admin')->group(function () {
             Route::get   ('/dashboard',                  [AdminController::class, 'dashboard']);
             Route::get   ('/listings',                   [AdminController::class, 'listings']);
+            Route::get   ('/listings/{id}',              [AdminController::class, 'showListing']);
             Route::get   ('/users',                      [AdminController::class, 'users']);
             Route::post  ('/listings/{id}/approve',      [AdminController::class, 'approveListing']);
             Route::post  ('/listings/{id}/reject',       [AdminController::class, 'rejectListing']);

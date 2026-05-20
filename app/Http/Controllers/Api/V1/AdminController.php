@@ -6,6 +6,7 @@ use App\Enums\ListingStatus;
 use App\Enums\NotificationKind;
 use App\Http\Controllers\Controller;
 use App\Http\Helpers\ApiResponse;
+use App\Http\Resources\ListingResource;
 use App\Models\AppNotification;
 use App\Models\Listing;
 use App\Models\User;
@@ -145,6 +146,23 @@ class AdminController extends Controller
         return ApiResponse::paginated($data, $paginator);
     }
 
+    public function showListing(string $id): JsonResponse
+    {
+        $listing = Listing::with([
+            'owner:id,name,email,phone',
+            'photos',
+            'amenities',
+            'listingType',
+            'facing',
+            'division',
+            'district',
+            'upazila',
+            'union',
+        ])->findOrFail($id);
+
+        return ApiResponse::success(new ListingResource($listing));
+    }
+
     public function approveListing(string $id): JsonResponse
     {
         $listing = Listing::findOrFail($id);
@@ -201,16 +219,32 @@ class AdminController extends Controller
     public function updateListing(Request $request, string $id): JsonResponse
     {
         $request->validate([
-            'title'            => 'sometimes|string|max:255',
-            'area'             => 'sometimes|string|max:255',
-            'price'            => 'sometimes|integer|min:0',
-            'deposit'          => 'sometimes|nullable|integer|min:0',
-            'beds'             => 'sometimes|integer|min:0',
-            'baths'            => 'sometimes|integer|min:0',
-            'size'             => 'sometimes|nullable|integer|min:0',
-            'description'      => 'sometimes|nullable|string',
-            'status'           => 'sometimes|string|in:draft,pending,active,rented,rejected',
-            'rejection_reason' => 'sometimes|nullable|string|max:500',
+            'title'             => 'sometimes|string|max:255',
+            'area'              => 'sometimes|string|max:255',
+            'road_and_house'    => 'sometimes|nullable|string|max:255',
+            'price'             => 'sometimes|integer|min:0',
+            'deposit'           => 'sometimes|nullable|integer|min:0',
+            'beds'              => 'sometimes|integer|min:0',
+            'baths'             => 'sometimes|integer|min:0',
+            'size'              => 'sometimes|nullable|integer|min:0',
+            'floor_no'          => 'sometimes|nullable|integer|min:0',
+            'listing_type_id'   => 'sometimes|nullable|exists:listing_types,id',
+            'facing_id'         => 'sometimes|nullable|exists:listing_facings,id',
+            'available_from'    => 'sometimes|nullable|date',
+            'description'       => 'sometimes|nullable|string',
+            'road'              => 'sometimes|nullable|string|max:255',
+            'house_name'        => 'sometimes|nullable|string|max:255',
+            'block'             => 'sometimes|nullable|string|max:100',
+            'section'           => 'sometimes|nullable|string|max:100',
+            'coord_x'           => 'sometimes|nullable|numeric',
+            'coord_y'           => 'sometimes|nullable|numeric',
+            'owner_name'        => 'sometimes|nullable|string|max:255',
+            'owner_phone'       => 'sometimes|nullable|string|max:20',
+            'owner_alt_phone'   => 'sometimes|nullable|string|max:20',
+            'owner_email'       => 'sometimes|nullable|email|max:255',
+            'preferred_contact' => 'sometimes|nullable|in:call,whatsapp,both',
+            'status'            => 'sometimes|string|in:draft,pending,active,rented,rejected',
+            'rejection_reason'  => 'sometimes|nullable|string|max:500',
         ]);
 
         $listing    = Listing::findOrFail($id);
@@ -218,8 +252,12 @@ class AdminController extends Controller
         $newStatus  = $request->has('status') ? ListingStatus::from($request->status) : null;
 
         $listing->update($request->only([
-            'title', 'area', 'price', 'deposit', 'beds', 'baths',
-            'size', 'description', 'status', 'rejection_reason',
+            'title', 'area', 'road_and_house', 'price', 'deposit', 'beds', 'baths',
+            'size', 'floor_no', 'listing_type_id', 'facing_id', 'available_from',
+            'description', 'road', 'house_name', 'block', 'section',
+            'coord_x', 'coord_y',
+            'owner_name', 'owner_phone', 'owner_alt_phone', 'owner_email', 'preferred_contact',
+            'status', 'rejection_reason',
         ]));
 
         // Fire push notification when status changes

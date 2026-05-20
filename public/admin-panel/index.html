@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <title>FlatNest — Admin Console</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/png" href="/flatnest_icon_v4.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet" />
@@ -298,6 +299,19 @@ function LoginPage({onLogin,th}){
             </button>
           </form>
         </Card>
+        <div style={{display:'flex',justifyContent:'center',gap:20,marginTop:20}}>
+          <a href="/privacy-policy" target="_blank" rel="noopener noreferrer"
+            style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
+            onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+            Privacy Policy
+          </a>
+          <span style={{color:th.border,fontSize:12}}>•</span>
+          <a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer"
+            style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
+            onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+            Terms & Conditions
+          </a>
+        </div>
       </div>
     </div>
   );

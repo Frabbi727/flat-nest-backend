@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -11,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -55,12 +53,6 @@ class User extends Authenticatable implements FilamentUser
     public function getAuthPassword(): string
     {
         return $this->password_hash ?? '';
-    }
-
-    // Only users with role=admin can access the Filament panel
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->role === 'admin';
     }
 
     public function listings()

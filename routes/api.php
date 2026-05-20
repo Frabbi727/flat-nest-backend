@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
@@ -98,5 +99,18 @@ Route::prefix('v1')->group(function () {
         Route::get  ('/notifications/unread-count',     [NotificationController::class, 'unreadCount']);
         Route::patch('/notifications/read-all',         [NotificationController::class, 'markAllRead']);
         Route::patch('/notifications/{id}/read',        [NotificationController::class, 'markRead']);
+
+        // Admin API
+        Route::middleware('admin')->prefix('admin')->group(function () {
+            Route::get   ('/dashboard',                  [AdminController::class, 'dashboard']);
+            Route::get   ('/listings',                   [AdminController::class, 'listings']);
+            Route::get   ('/users',                      [AdminController::class, 'users']);
+            Route::post  ('/listings/{id}/approve',      [AdminController::class, 'approveListing']);
+            Route::post  ('/listings/{id}/reject',       [AdminController::class, 'rejectListing']);
+            Route::patch ('/listings/{id}',              [AdminController::class, 'updateListing']);
+            Route::delete('/listings/{id}',              [AdminController::class, 'deleteListing']);
+            Route::patch ('/users/{id}',                 [AdminController::class, 'updateUser']);
+            Route::delete('/users/{id}',                 [AdminController::class, 'deleteUser']);
+        });
     });
 });

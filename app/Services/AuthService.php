@@ -42,8 +42,8 @@ class AuthService
 
     public function updateAvatar(User $user, mixed $file): string
     {
-        $path = Storage::disk(config('filesystems.default'))->put('avatars', $file);
-        $url  = Storage::disk(config('filesystems.default'))->url($path);
+        $path = Storage::disk('public')->put('avatars', $file);
+        $url  = Storage::disk('public')->url($path);
 
         $this->users->update($user, ['avatar_url' => $url, 'is_complete' => true]);
 
@@ -97,6 +97,11 @@ class AuthService
         }
 
         return $this->tokenResponse($user);
+    }
+
+    public function deleteAccount(User $user): void
+    {
+        $user->delete();
     }
 
     public function logout(User $user): void

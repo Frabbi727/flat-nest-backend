@@ -7,6 +7,7 @@ use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -30,6 +31,17 @@ class User extends Authenticatable implements FilamentUser
     {
         parent::boot();
         static::creating(fn ($model) => $model->id = (string) Str::uuid());
+        static::deleting(function (User $user) {
+            // Delete each listing through Eloquent so the listing's own
+            // deleting hook fires and cleans up the photo directories
+            $user->listings()->each(fn (Listing $listing) => $listing->delete());
+
+            // Delete avatar file from storage
+            if ($user->avatar_url) {
+                $path = Str::after($user->avatar_url, Storage::disk('public')->url(''));
+                Storage::disk('public')->delete(ltrim($path, '/'));
+            }
+        });
     }
 
     protected function casts(): array

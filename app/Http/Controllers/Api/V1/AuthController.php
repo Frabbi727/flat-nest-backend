@@ -66,6 +66,12 @@ class AuthController extends Controller
         return ApiResponse::success(null, 'Logged out');
     }
 
+    public function deleteAccount(Request $request): JsonResponse
+    {
+        $this->auth->deleteAccount($request->user());
+        return ApiResponse::success(null, 'Account deleted');
+    }
+
     public function refresh(RefreshTokenRequest $request): JsonResponse
     {
         try {

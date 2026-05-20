@@ -49,9 +49,10 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         // Auth
-        Route::post ('/auth/logout',           [AuthController::class, 'logout']);
-        Route::patch('/auth/register/details', [AuthController::class, 'registerDetails']);
-        Route::patch('/auth/register/avatar',  [AuthController::class, 'registerAvatar']);
+        Route::post  ('/auth/logout',          [AuthController::class, 'logout']);
+        Route::delete('/auth/account',         [AuthController::class, 'deleteAccount']);
+        Route::patch ('/auth/register/details', [AuthController::class, 'registerDetails']);
+        Route::patch ('/auth/register/avatar',  [AuthController::class, 'registerAvatar']);
 
         // Wishlist
         Route::get ('/wishlist',                         [WishlistController::class, 'index']);

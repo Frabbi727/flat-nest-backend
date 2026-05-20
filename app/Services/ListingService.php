@@ -316,8 +316,8 @@ class ListingService
     {
         foreach ($photos as $index => $photo) {
             /** @var UploadedFile $photo */
-            $path = Storage::disk(config('filesystems.default'))->put('listings/'.$listing->id, $photo);
-            $url  = Storage::disk(config('filesystems.default'))->url($path);
+            $path = Storage::disk('public')->put('listings/'.$listing->id, $photo);
+            $url  = Storage::disk('public')->url($path);
 
             ListingPhoto::create([
                 'listing_id' => $listing->id,

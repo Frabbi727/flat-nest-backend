@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Helpers\ApiResponse;
 use App\Http\Resources\ListingResource;
 use App\Models\AppNotification;
+use App\Models\DeviceSession;
 use App\Models\Listing;
 use App\Models\User;
 use App\Services\FcmService;
@@ -320,5 +321,25 @@ class AdminController extends Controller
         $user->delete();
 
         return ApiResponse::success(null, 'User deleted');
+    }
+
+    public function userSessions(string $id): JsonResponse
+    {
+        User::findOrFail($id);
+
+        $sessions = DeviceSession::where('user_id', $id)
+            ->orderByDesc('logged_in_at')
+            ->get()
+            ->map(fn ($s) => [
+                'id'            => $s->id,
+                'device_model'  => $s->device_model ?? 'Unknown device',
+                'device_type'   => $s->device_type ?? 'unknown',
+                'ip_address'    => $s->ip_address,
+                'logged_in_at'  => $s->logged_in_at,
+                'logged_out_at' => $s->logged_out_at,
+                'is_active'     => is_null($s->logged_out_at),
+            ]);
+
+        return ApiResponse::success($sessions);
     }
 }

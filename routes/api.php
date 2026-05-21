@@ -92,6 +92,7 @@ Route::prefix('v1')->group(function () {
 
         // Device / FCM
         Route::post('/device/fcm-token', [DeviceController::class, 'registerFcmToken']);
+        Route::get ('/device/sessions',  [DeviceController::class, 'sessions']);
 
         // User
         Route::patch('/user/location', [UserController::class, 'updateLocation']);
@@ -108,6 +109,7 @@ Route::prefix('v1')->group(function () {
             Route::get   ('/listings',                   [AdminController::class, 'listings']);
             Route::get   ('/listings/{id}',              [AdminController::class, 'showListing']);
             Route::get   ('/users',                      [AdminController::class, 'users']);
+            Route::get   ('/users/{id}/sessions',        [AdminController::class, 'userSessions']);
             Route::post  ('/listings/{id}/approve',      [AdminController::class, 'approveListing']);
             Route::post  ('/listings/{id}/reject',       [AdminController::class, 'rejectListing']);
             Route::patch ('/listings/{id}',              [AdminController::class, 'updateListing']);

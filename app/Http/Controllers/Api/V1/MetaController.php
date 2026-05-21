@@ -39,4 +39,13 @@ class MetaController extends Controller
 
         return ApiResponse::success($facings);
     }
+
+    public function links(): JsonResponse
+    {
+        return ApiResponse::success([
+            'delete_account'    => url('/delete-account'),
+            'privacy_policy'    => url('/privacy-policy'),
+            'terms_conditions'  => url('/terms-and-conditions'),
+        ]);
+    }
 }

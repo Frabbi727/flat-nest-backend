@@ -39,6 +39,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/meta/roles',           [MetaController::class, 'roles']);
     Route::get('/meta/listing-types',   [MetaController::class, 'types']);
     Route::get('/meta/listing-facings', [MetaController::class, 'facings']);
+    Route::get('/meta/links',           [MetaController::class, 'links']);
 
     // Amenities — public read, protected write
     Route::get('/amenities', [AmenityController::class, 'index']);

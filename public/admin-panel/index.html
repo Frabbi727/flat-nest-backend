@@ -299,17 +299,24 @@ function LoginPage({onLogin,th}){
             </button>
           </form>
         </Card>
-        <div style={{display:'flex',justifyContent:'center',gap:20,marginTop:20}}>
-          <a href="/privacy-policy" target="_blank" rel="noopener noreferrer"
-            style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
-            onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
-            Privacy Policy
-          </a>
-          <span style={{color:th.border,fontSize:12}}>•</span>
-          <a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer"
-            style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
-            onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
-            Terms & Conditions
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,marginTop:20}}>
+          <div style={{display:'flex',justifyContent:'center',gap:20}}>
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer"
+              style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
+              onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+              Privacy Policy
+            </a>
+            <span style={{color:th.border,fontSize:12}}>•</span>
+            <a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer"
+              style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
+              onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+              Terms & Conditions
+            </a>
+          </div>
+          <a href="/delete-account" target="_blank" rel="noopener noreferrer"
+            style={{fontSize:12,color:th.inkSoft,textDecoration:'underline',fontWeight:500,transition:'color .15s'}}
+            onMouseOver={e=>e.target.style.color=th.error} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+            Delete your account
           </a>
         </div>
       </div>

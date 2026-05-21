@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
         Route::get ('/wishlist',                         [WishlistController::class, 'index']);
         Route::post('/wishlist/{listing_id}/toggle',     [WishlistController::class, 'toggle']);
 
+
         // Owner
         Route::middleware('owner')->group(function () {
             Route::get   ('/owner/listings',            [OwnerController::class, 'index']);

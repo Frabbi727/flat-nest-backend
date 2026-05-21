@@ -22,7 +22,7 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
-        return ApiResponse::success($this->auth->register($request->validated()), null, 201);
+        return ApiResponse::success($this->auth->register($request->validated(), $request->ip()), null, 201);
     }
 
     public function registerDetails(RegisterDetailsRequest $request): JsonResponse
@@ -44,7 +44,7 @@ class AuthController extends Controller
     public function googleSignIn(GoogleAuthRequest $request): JsonResponse
     {
         try {
-            return ApiResponse::success($this->auth->googleSignIn($request->id_token));
+            return ApiResponse::success($this->auth->googleSignIn($request->id_token, $request->ip()));
         } catch (UnauthorizedHttpException $e) {
             return ApiResponse::error($e->getMessage(), 'INVALID_GOOGLE_TOKEN', 401);
         }
@@ -53,7 +53,7 @@ class AuthController extends Controller
     public function login(LoginRequest $request): JsonResponse
     {
         try {
-            return ApiResponse::success($this->auth->login($request->email, $request->password));
+            return ApiResponse::success($this->auth->login($request->email, $request->password, $request->ip()));
         } catch (UnauthorizedHttpException $e) {
             $code = str_contains($e->getMessage(), 'Google Sign-In') ? 'USE_GOOGLE_SIGN_IN' : 'INVALID_CREDENTIALS';
             return ApiResponse::error($e->getMessage(), $code, 401);

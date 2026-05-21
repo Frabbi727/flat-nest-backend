@@ -342,4 +342,36 @@ class AdminController extends Controller
 
         return ApiResponse::success($sessions);
     }
+
+    public function allSessions(Request $request): JsonResponse
+    {
+        $query = DeviceSession::with('user:id,name,email,avatar_url')
+            ->orderByDesc('logged_in_at');
+
+        if ($request->filled('status')) {
+            $query->when($request->status === 'active',   fn ($q) => $q->whereNull('logged_out_at'));
+            $query->when($request->status === 'inactive', fn ($q) => $q->whereNotNull('logged_out_at'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', fn ($q) => $q->where('name', 'like', "%$search%")
+                ->orWhere('email', 'like', "%$search%"));
+        }
+
+        $paginator = $query->paginate(20);
+
+        $data = $paginator->map(fn ($s) => [
+            'id'            => $s->id,
+            'user'          => $s->user ? ['id' => $s->user->id, 'name' => $s->user->name, 'email' => $s->user->email] : null,
+            'device_model'  => $s->device_model ?? 'Unknown device',
+            'device_type'   => $s->device_type ?? 'unknown',
+            'ip_address'    => $s->ip_address,
+            'logged_in_at'  => $s->logged_in_at,
+            'logged_out_at' => $s->logged_out_at,
+            'is_active'     => is_null($s->logged_out_at),
+        ]);
+
+        return ApiResponse::paginated($data, $paginator);
+    }
 }

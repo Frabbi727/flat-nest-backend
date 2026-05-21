@@ -110,6 +110,7 @@ Route::prefix('v1')->group(function () {
             Route::get   ('/listings/{id}',              [AdminController::class, 'showListing']);
             Route::get   ('/users',                      [AdminController::class, 'users']);
             Route::get   ('/users/{id}/sessions',        [AdminController::class, 'userSessions']);
+            Route::get   ('/sessions',                   [AdminController::class, 'allSessions']);
             Route::post  ('/listings/{id}/approve',      [AdminController::class, 'approveListing']);
             Route::post  ('/listings/{id}/reject',       [AdminController::class, 'rejectListing']);
             Route::patch ('/listings/{id}',              [AdminController::class, 'updateListing']);

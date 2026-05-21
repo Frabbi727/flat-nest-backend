@@ -618,6 +618,7 @@ function Sidebar({th,page,setPage,counts,user}){
     {id:'approvals', label:'Approvals',  icon:'approve', badge:counts.pending},
     {id:'listings',  label:'Listings',   icon:'listing',  badge:counts.listings},
     {id:'users',     label:'Users',      icon:'users',    badge:counts.users},
+    {id:'sessions',  label:'Sessions',   icon:'device'},
     {id:'analytics', label:'Analytics',  icon:'chart'},
   ];
   return(
@@ -1477,6 +1478,110 @@ function PageUsers({th,api}){
   );
 }
 
+// ─── sessions page ──────────────────────────────────────────────
+function PageSessions({th,api}){
+  const toast=useToast();
+  const[rows,setRows]=React.useState([]);
+  const[meta,setMeta]=React.useState(null);
+  const[page,setPage]=React.useState(1);
+  const[status,setStatus]=React.useState('all');
+  const[search,setSearch]=React.useState('');
+  const[loading,setLoading]=React.useState(true);
+
+  const load=React.useCallback((pg=page)=>{
+    setLoading(true);
+    const p=new URLSearchParams({page:pg});
+    if(status!=='all')p.set('status',status);
+    if(search)p.set('search',search);
+    api.get(`/admin/sessions?${p}`)
+      .then(r=>{setRows(r.data||[]);setMeta(r.meta||null);setLoading(false);})
+      .catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[status,search,page]);
+
+  React.useEffect(()=>{setPage(1);},[status,search]);
+  React.useEffect(()=>{const t=setTimeout(()=>load(page),300);return()=>clearTimeout(t);},[status,search,page]);
+
+  const fmtDate=d=>d?new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+
+  const deviceIcon=type=>{
+    if(type==='ios'||type==='android')return(
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'block'}}><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+    );
+    return(
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'block'}}><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    );
+  };
+
+  const tabs=[{value:'all',label:'All'},{value:'active',label:'Active'},{value:'inactive',label:'Logged out'}];
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <Tabs th={th} value={status} onChange={v=>{setStatus(v);setPage(1);}} options={tabs}/>
+        <div style={{flex:1}}/>
+        <SearchBar th={th} value={search} onChange={v=>{setSearch(v);setPage(1);}} placeholder="Search by user name or email…"/>
+        <IBtn th={th} icon="refresh" title="Refresh" onClick={()=>load(page)}/>
+      </div>
+      <Card th={th} pad={0}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontFamily:FN_FONT}}>
+            <thead>
+              <tr style={{background:th.bgAlt}}>
+                {['User','Device','Type','IP Address','Login time','Logout time','Status'].map((h,i)=>(
+                  <th key={i} style={{textAlign:'left',fontSize:10.5,color:th.inkSoft,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',padding:'12px 16px',borderBottom:`1px solid ${th.border}`,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading?[1,2,3,4,5].map(i=>(
+                <tr key={i}><td colSpan={7} style={{padding:'12px 16px',borderBottom:`1px solid ${th.borderSoft}`}}><Skeleton h={20}/></td></tr>
+              )):rows.map(s=>(
+                <tr key={s.id} style={{borderBottom:`1px solid ${th.borderSoft}`,transition:'background .12s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=th.bgAlt}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{padding:'10px 16px'}}>
+                    {s.user?(
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:th.ink,whiteSpace:'nowrap'}}>{s.user.name}</div>
+                        <div style={{fontSize:11,color:th.inkSoft,marginTop:2}}>{s.user.email}</div>
+                      </div>
+                    ):<span style={{color:th.inkFaint,fontSize:12}}>Deleted user</span>}
+                  </td>
+                  <td style={{padding:'10px 16px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,color:th.inkMid,fontSize:12.5}}>
+                      {deviceIcon(s.device_type)}
+                      <span style={{whiteSpace:'nowrap'}}>{s.device_model}</span>
+                    </div>
+                  </td>
+                  <td style={{padding:'10px 16px'}}>
+                    <span style={{fontSize:12,color:th.inkSoft,textTransform:'capitalize',background:th.bgAlt,padding:'3px 8px',borderRadius:6,border:`1px solid ${th.borderSoft}`}}>{s.device_type}</span>
+                  </td>
+                  <td style={{padding:'10px 16px',fontSize:12.5,color:th.inkMid,fontFamily:'ui-monospace,monospace',whiteSpace:'nowrap'}}>{s.ip_address||'—'}</td>
+                  <td style={{padding:'10px 16px',fontSize:12.5,color:th.inkMid,whiteSpace:'nowrap'}}>{fmtDate(s.logged_in_at)}</td>
+                  <td style={{padding:'10px 16px',fontSize:12.5,color:th.inkSoft,whiteSpace:'nowrap'}}>{fmtDate(s.logged_out_at)}</td>
+                  <td style={{padding:'10px 16px'}}>
+                    {s.is_active
+                      ?<span style={{display:'inline-flex',alignItems:'center',gap:4,color:th.success,fontSize:12,fontWeight:600,background:alpha(th.success,.1),padding:'3px 10px',borderRadius:20}}><span style={{width:6,height:6,borderRadius:'50%',background:th.success,display:'inline-block'}}/>Active</span>
+                      :<span style={{display:'inline-flex',alignItems:'center',gap:4,color:th.inkSoft,fontSize:12,fontWeight:500,background:th.bgAlt,padding:'3px 10px',borderRadius:20,border:`1px solid ${th.borderSoft}`}}>Logged out</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading&&rows.length===0&&(
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <div style={{width:48,height:48,borderRadius:14,background:th.bgAlt,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Icon name="device" size={24} style={{color:th.inkFaint}}/></div>
+            <div style={{fontSize:14,fontWeight:600,color:th.ink}}>No sessions found</div>
+            <div style={{fontSize:13,color:th.inkSoft,marginTop:4}}>Sessions are recorded each time a user logs in.</div>
+          </div>
+        )}
+        <Pagination meta={meta} onPage={p=>{setPage(p);load(p);}} th={th}/>
+      </Card>
+    </div>
+  );
+}
+
 // ─── analytics page ─────────────────────────────────────────────
 function PageAnalytics({th,api}){
   const toast=useToast();
@@ -1666,6 +1771,7 @@ function App(){
     listings:        {title:'Listings',          crumb:'Listings · All'},
     'listing-detail':{title:'Listing Details',  crumb:'Listings · Detail'},
     users:           {title:'Users',             crumb:'People · All'},
+    sessions:        {title:'Sessions',          crumb:'People · Login history'},
     analytics:       {title:'Analytics',         crumb:'Insights · Last 14 days'},
   };
   const m=pagesMeta[page]||{title:page,crumb:''};
@@ -1676,6 +1782,7 @@ function App(){
     listings: <PageListings  th={th} api={api} onViewDetail={viewDetail} metaTypes={metaTypes} metaFacings={metaFacings}/>,
     'listing-detail':detailId?<PageListingDetail th={th} api={api} listingId={detailId} onBack={backToListings} metaTypes={metaTypes} metaFacings={metaFacings}/>:null,
     users:    <PageUsers     th={th} api={api}/>,
+    sessions: <PageSessions  th={th} api={api}/>,
     analytics:<PageAnalytics th={th} api={api}/>,
   };
 

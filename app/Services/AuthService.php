@@ -17,7 +17,7 @@ class AuthService
 {
     public function __construct(private readonly UserRepositoryInterface $users) {}
 
-    public function register(array $data): array
+    public function register(array $data, ?string $ip = null): array
     {
         $user = $this->users->create([
             'name'          => $data['name'],
@@ -26,7 +26,7 @@ class AuthService
             'phone'         => $data['phone'],
         ]);
 
-        return $this->tokenResponse($user, registrationStep: 2);
+        return $this->tokenResponse($user, registrationStep: 2, ip: $ip);
     }
 
     public function updateDetails(User $user, array $data): User
@@ -50,7 +50,7 @@ class AuthService
         return $url;
     }
 
-    public function googleSignIn(string $idToken): array
+    public function googleSignIn(string $idToken, ?string $ip = null): array
     {
         $payload = $this->verifyGoogleToken($idToken);
 
@@ -81,10 +81,10 @@ class AuthService
 
         $step = $user->is_complete ? 3 : 2;
 
-        return $this->tokenResponse($user, registrationStep: $step);
+        return $this->tokenResponse($user, registrationStep: $step, ip: $ip);
     }
 
-    public function login(string $email, string $password): array
+    public function login(string $email, string $password, ?string $ip = null): array
     {
         $user = $this->users->findByEmail($email);
 
@@ -96,7 +96,7 @@ class AuthService
             throw new UnauthorizedHttpException('', 'Invalid credentials');
         }
 
-        return $this->tokenResponse($user);
+        return $this->tokenResponse($user, ip: $ip);
     }
 
     public function deleteAccount(User $user): void
@@ -147,10 +147,18 @@ class AuthService
         return $payload;
     }
 
-    private function tokenResponse(User $user, ?int $registrationStep = null): array
+    private function tokenResponse(User $user, ?int $registrationStep = null, ?string $ip = null): array
     {
-        $accessToken  = $user->createToken('access')->plainTextToken;
+        $newToken     = $user->createToken('access');
+        $accessToken  = $newToken->plainTextToken;
         $refreshToken = $this->issueRefreshToken($user);
+
+        DeviceSession::create([
+            'user_id'         => $user->id,
+            'access_token_id' => $newToken->accessToken->id,
+            'ip_address'      => $ip,
+            'logged_in_at'    => now(),
+        ]);
 
         $response = [
             'access_token'  => $accessToken,

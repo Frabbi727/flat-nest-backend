@@ -6,6 +6,9 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\GeoController;
+use App\Http\Controllers\Api\V1\HostelController;
+use App\Http\Controllers\Api\V1\HostelOwnerController;
+use App\Http\Controllers\Api\V1\HostelTypeController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\ListingController;
 use App\Http\Controllers\Api\V1\ListingTypeController;
@@ -46,6 +49,11 @@ Route::prefix('v1')->group(function () {
 
     // Listing types — public read, protected write
     Route::get('/listing-types', [ListingTypeController::class, 'index']);
+
+    // NestStay Hostels — public
+    Route::get('/hostel-types',   [HostelTypeController::class, 'index']);
+    Route::get('/hostels',        [HostelController::class, 'index']);
+    Route::get('/hostels/{id}',   [HostelController::class, 'show']);
 
     // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
@@ -103,6 +111,23 @@ Route::prefix('v1')->group(function () {
         Route::patch('/notifications/read-all',         [NotificationController::class, 'markAllRead']);
         Route::patch('/notifications/{id}/read',        [NotificationController::class, 'markRead']);
 
+        // NestStay Hostels — review (any authenticated user)
+        Route::post('/hostels/{id}/reviews', [HostelController::class, 'review']);
+
+        // NestStay Hostels — owner management
+        Route::middleware('owner')->group(function () {
+            Route::get   ('/owner/hostels',                  [HostelOwnerController::class, 'index']);
+            Route::post  ('/hostels',                        [HostelOwnerController::class, 'store']);
+            Route::post  ('/hostels/{id}/photos',            [HostelOwnerController::class, 'uploadPhotos']);
+            Route::patch ('/hostels/{id}/location',          [HostelOwnerController::class, 'updateLocation']);
+            Route::post  ('/hostels/{id}/rooms',             [HostelOwnerController::class, 'addRoom']);
+            Route::patch ('/hostels/{id}/rooms/{rid}',       [HostelOwnerController::class, 'updateRoom']);
+            Route::patch ('/hostels/{id}/seats/{sid}',       [HostelOwnerController::class, 'updateSeat']);
+            Route::post  ('/hostels/{id}/submit',            [HostelOwnerController::class, 'submit']);
+            Route::patch ('/hostels/{id}',                   [HostelOwnerController::class, 'update']);
+            Route::delete('/hostels/{id}',                   [HostelOwnerController::class, 'destroy']);
+        });
+
         // Admin API
         Route::middleware('admin')->prefix('admin')->group(function () {
             Route::get   ('/dashboard',                  [AdminController::class, 'dashboard']);
@@ -117,6 +142,12 @@ Route::prefix('v1')->group(function () {
             Route::delete('/listings/{id}',              [AdminController::class, 'deleteListing']);
             Route::patch ('/users/{id}',                 [AdminController::class, 'updateUser']);
             Route::delete('/users/{id}',                 [AdminController::class, 'deleteUser']);
+            // Owner account creation
+            Route::post('/owners',                       [AdminController::class, 'createOwner']);
+            // Hostel moderation
+            Route::get ('/hostels',                      [AdminController::class, 'hostels']);
+            Route::post('/hostels/{id}/approve',         [AdminController::class, 'approveHostel']);
+            Route::post('/hostels/{id}/reject',          [AdminController::class, 'rejectHostel']);
         });
     });
 });

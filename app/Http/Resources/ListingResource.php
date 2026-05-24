@@ -12,6 +12,7 @@ class ListingResource extends JsonResource
         return [
             'id'                => $this->id,
             'owner_id'          => $this->owner_id,
+            'category'          => $this->category,
             'title'             => $this->title,
             'listing_type_id'   => $this->listing_type_id,
             'listing_type'      => $this->whenLoaded('listingType', fn () => [

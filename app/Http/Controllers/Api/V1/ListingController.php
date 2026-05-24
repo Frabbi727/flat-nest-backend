@@ -17,6 +17,7 @@ class ListingController extends Controller
     {
         $filters = $request->only([
             'search',
+            'category',
             'listing_type_id',
             'price_min',
             'price_max',

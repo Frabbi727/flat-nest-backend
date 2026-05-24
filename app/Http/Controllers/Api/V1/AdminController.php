@@ -9,6 +9,7 @@ use App\Http\Helpers\ApiResponse;
 use App\Http\Resources\ListingResource;
 use App\Models\AppNotification;
 use App\Models\DeviceSession;
+use App\Models\Hostel;
 use App\Models\Listing;
 use App\Models\User;
 use App\Services\FcmService;
@@ -27,6 +28,8 @@ class AdminController extends Controller
             'total_users'      => $users->count(),
             'pending_approval' => $listings->where('status', ListingStatus::Pending)->count(),
             'total_listings'   => $listings->count(),
+            'pending_hostels'  => Hostel::where('status', 'pending')->count(),
+            'total_hostels'    => Hostel::count(),
         ];
 
         // Daily counts for the last 14 days (oldest → newest)
@@ -85,9 +88,10 @@ class AdminController extends Controller
 
     public function listings(Request $request): JsonResponse
     {
-        $query = Listing::with('owner:id,name')
-            ->when($request->status, fn ($q) => $q->where('status', $request->status))
-            ->when($request->search, fn ($q) => $q->where(function ($q) use ($request) {
+        $query = Listing::with('owner:id,name', 'listingType:id,label')
+            ->when($request->status,   fn ($q) => $q->where('status', $request->status))
+            ->when($request->category, fn ($q) => $q->where('category', $request->category))
+            ->when($request->search,   fn ($q) => $q->where(function ($q) use ($request) {
                 $q->where('title', 'like', "%{$request->search}%")
                   ->orWhere('area', 'like', "%{$request->search}%")
                   ->orWhereHas('owner', fn ($q) => $q->where('name', 'like', "%{$request->search}%"));
@@ -98,6 +102,7 @@ class AdminController extends Controller
 
         $data = $paginator->map(fn ($l) => [
             'id'               => $l->id,
+            'category'         => $l->category,
             'title'            => $l->title,
             'owner'            => $l->owner?->name,
             'owner_id'         => $l->owner_id,
@@ -373,5 +378,120 @@ class AdminController extends Controller
         ]);
 
         return ApiResponse::paginated($data, $paginator);
+    }
+
+    public function hostels(Request $request): JsonResponse
+    {
+        $query = Hostel::with(['owner:id,name,email', 'type'])
+            ->withCount([
+                'seats as total_seats',
+                'seats as vacant_seats' => fn ($q) => $q->where('status', 'vacant'),
+            ])
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->when($request->search, fn ($q) => $q->where(function ($q) use ($request) {
+                $q->where('name', 'like', "%{$request->search}%")
+                  ->orWhere('address', 'like', "%{$request->search}%")
+                  ->orWhereHas('owner', fn ($q) => $q->where('name', 'like', "%{$request->search}%"));
+            }))
+            ->latest();
+
+        $paginator = $query->paginate(20);
+
+        $data = $paginator->map(fn ($h) => [
+            'id'               => $h->id,
+            'name'             => $h->name,
+            'type'             => $h->type?->label ?? '—',
+            'gender_policy'    => $h->gender_policy,
+            'owner'            => $h->owner?->name,
+            'owner_email'      => $h->owner?->email,
+            'owner_id'         => $h->owner_id,
+            'address'          => $h->address,
+            'price'            => $h->price,
+            'price_unit'       => $h->price_unit,
+            'total_seats'      => $h->total_seats ?? 0,
+            'vacant_seats'     => $h->vacant_seats ?? 0,
+            'status'           => $h->status->value,
+            'is_verified'      => $h->is_verified,
+            'rejection_reason' => $h->rejection_reason,
+            'views'            => $h->views,
+            'created'          => $h->created_at->diffForHumans(),
+        ]);
+
+        return ApiResponse::paginated($data, $paginator);
+    }
+
+    public function createOwner(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name'     => 'required|string|max:100',
+            'email'    => 'required|email|unique:users,email',
+            'phone'    => 'required|regex:/^01[3-9]\d{8}$/|unique:users,phone',
+            'password' => 'required|min:8',
+        ]);
+
+        $user = User::create([
+            'name'          => $data['name'],
+            'email'         => $data['email'],
+            'phone'         => $data['phone'],
+            'password_hash' => \Illuminate\Support\Facades\Hash::make($data['password']),
+            'role'          => 'owner',
+            'is_complete'   => true,
+        ]);
+
+        return ApiResponse::success([
+            'id'    => $user->id,
+            'name'  => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role'  => $user->role,
+        ], 'Owner account created.', 201);
+    }
+
+    public function approveHostel(string $id): JsonResponse
+    {
+        $hostel = Hostel::findOrFail($id);
+        $hostel->update(['status' => 'active', 'is_verified' => true, 'rejection_reason' => null]);
+
+        AppNotification::create([
+            'user_id'      => $hostel->owner_id,
+            'kind'         => NotificationKind::HostelApproved->value,
+            'title'        => 'Your hostel was approved!',
+            'body'         => $hostel->name . ' is now live and visible to everyone.',
+            'reference_id' => $hostel->id,
+        ]);
+
+        app(FcmService::class)->sendToUser(
+            $hostel->owner_id,
+            'Your hostel was approved!',
+            $hostel->name . ' is now live and visible to everyone.',
+            ['kind' => NotificationKind::HostelApproved->value, 'reference_id' => $hostel->id]
+        );
+
+        return ApiResponse::success(null, 'Hostel approved.');
+    }
+
+    public function rejectHostel(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['reason' => 'required|string|max:500']);
+
+        $hostel = Hostel::findOrFail($id);
+        $hostel->update(['status' => 'rejected', 'rejection_reason' => $request->reason]);
+
+        AppNotification::create([
+            'user_id'      => $hostel->owner_id,
+            'kind'         => NotificationKind::HostelRejected->value,
+            'title'        => 'Your hostel was rejected.',
+            'body'         => $request->reason,
+            'reference_id' => $hostel->id,
+        ]);
+
+        app(FcmService::class)->sendToUser(
+            $hostel->owner_id,
+            'Your hostel was rejected.',
+            $request->reason,
+            ['kind' => NotificationKind::HostelRejected->value, 'reference_id' => $hostel->id]
+        );
+
+        return ApiResponse::success(null, 'Hostel rejected.');
     }
 }

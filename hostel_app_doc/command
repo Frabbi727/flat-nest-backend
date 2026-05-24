@@ -1,0 +1,177 @@
+Here’s your **final refined AI command** with mobile-app alignment explicitly enforced 👇
+
+---
+
+## 🧠 AI COMMAND: Extend Owner Flow (Strict Mobile Alignment, Non-Breaking)
+
+**Objective:**
+Extend the existing system to support unified Owner flow for Flat and Mess listings, fully aligned with the current mobile app behavior and APIs, without breaking anything.
+
+---
+
+### 🔒 Constraints (STRICT)
+
+* Do NOT modify or break existing APIs
+* Do NOT change existing response structures
+* Do NOT remove or rename existing fields
+* Do NOT change current mobile app flow
+* All new features must behave exactly like existing **flat listing flow**
+* Only extend in a backward-compatible way
+
+---
+
+### 📱 Mobile App Alignment (CRITICAL)
+
+* Treat **Mess/Hostel listing exactly like Flat listing**
+
+* Reuse:
+
+  * Same UI flow
+  * Same API structure
+  * Same request/response format
+  * Same controller logic
+  * Same repository pattern
+
+* Any new listing type (`mess`) must:
+
+  * Follow identical submission flow as `flat`
+  * Use same validation pattern
+  * Use same API call structure
+  * Be handled by same controller/repository methods
+
+* Difference between `flat` and `mess` should ONLY be:
+
+  * `type` field value
+
+---
+
+### 👤 Owner Role
+
+* Single unified owner account
+* Can create and manage:
+
+  * Flat listings
+  * Mess/Hostel listings
+* No separate roles or login systems
+
+---
+
+### 🏷️ Listing Types
+
+* समर्थन:
+
+  * `flat` (default)
+  * `mess`
+
+* If no type is provided → treat as `flat` (for backward compatibility)
+
+---
+
+### 📊 Listing Status System
+
+* `draft`
+* `pending`
+* `approved`
+* `rejected`
+
+Rules:
+
+* New listing → `pending`
+* Only `approved` is publicly visible
+* `rejected` must include admin note
+* Owner can edit and resubmit rejected listings
+
+---
+
+### ⚙️ Backend Instructions
+
+* Extend existing listing structure:
+
+  * Add `type`
+  * Add `status`
+  * Add `admin_note`
+
+* Use safe, non-destructive migrations
+
+* Extend APIs by:
+
+  * Adding optional params (`type`, `status`)
+  * OR adding new endpoints without affecting old ones
+
+* Ensure:
+
+  * Old requests still behave exactly the same
+  * Default responses remain unchanged
+
+---
+
+### 🛠️ Admin Capabilities
+
+* Approve listing
+* Reject listing (with reason)
+* Edit listing
+* Delete listing
+
+---
+
+### 📱 Mobile Implementation Rules
+
+* Reuse existing:
+
+  * Controllers (GetX)
+  * Repository methods
+  * API integration logic
+
+* Extend models with optional fields:
+
+  * `type`
+  * `status`
+  * `adminNote`
+
+* DO NOT create separate flow for mess
+
+* DO NOT duplicate UI or logic
+
+* Use same screens and just switch behavior using `type`
+
+---
+
+### 📊 Owner Dashboard
+
+* All Listings
+* Pending Listings
+* Approved Listings
+* Rejected Listings
+
+Actions:
+
+* Create listing (flat/mess using same flow)
+* Edit listing
+* Delete listing
+* Resubmit rejected listing
+
+---
+
+### 🔁 Flow
+
+1. Owner creates listing (same as flat flow)
+2. System assigns `type` (flat/mess)
+3. Status = `pending`
+4. Admin reviews
+5. Approve or Reject
+6. Owner edits if rejected
+7. Resubmit
+
+---
+
+### ✅ Success Criteria
+
+* Mobile app UI/UX remains unchanged
+* Mess listing behaves exactly like flat listing
+* No duplicate logic introduced
+* No API breaking changes
+* System remains stable in production
+* Owner experience is seamless and unified
+
+---
+

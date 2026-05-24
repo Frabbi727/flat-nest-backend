@@ -10,4 +10,6 @@ enum NotificationKind: string
     case ListingReview          = 'listing_review';
     case NearbyListing          = 'nearby_listing';
     case WishlistListingRented  = 'wishlist_listing_rented';
+    case HostelApproved         = 'hostel_approved';
+    case HostelRejected         = 'hostel_rejected';
 }

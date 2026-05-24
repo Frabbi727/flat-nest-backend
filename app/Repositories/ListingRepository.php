@@ -28,6 +28,7 @@ class ListingRepository implements ListingRepositoryInterface
             ->when($filters['district_id'] ?? null, fn ($q, $v) => $q->where('district_id', $v))
             ->when($filters['upazila_id'] ?? null, fn ($q, $v) => $q->where('upazila_id', $v))
             ->when($filters['union_id'] ?? null, fn ($q, $v) => $q->where('union_id', $v))
+            ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('category', $v))
             ->when($filters['listing_type_id'] ?? null, fn ($q, $v) => $q->where('listing_type_id', $v))
             ->when($filters['price_min'] ?? null, fn ($q, $v) => $q->where('price', '>=', $v))
             ->when($filters['price_max'] ?? null, fn ($q, $v) => $q->where('price', '<=', $v))
@@ -72,6 +73,7 @@ class ListingRepository implements ListingRepositoryInterface
             ->withCount('chats as inquiries')
             ->where('owner_id', $ownerId)
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['category'] ?? null, fn ($q, $v) => $q->where('category', $v))
             ->when($filters['type_id'] ?? null, fn ($q, $v) => $q->where('listing_type_id', $v))
             ->latest()
             ->paginate(15);
@@ -118,6 +120,7 @@ class ListingRepository implements ListingRepositoryInterface
             )))) AS distance_km', [$lat, $lng, $lat])
             ->having('distance_km', '<=', $radius)
             // ── Listing type & price ──────────────────────────────────────
+            ->when($filters['category'] ?? null,        fn ($q, $v) => $q->where('category', $v))
             ->when($filters['listing_type_id'] ?? null, fn ($q, $v) => $q->where('listing_type_id', $v))
             ->when($filters['price_min'] ?? null,       fn ($q, $v) => $q->where('price', '>=', $v))
             ->when($filters['price_max'] ?? null,       fn ($q, $v) => $q->where('price', '<=', $v))

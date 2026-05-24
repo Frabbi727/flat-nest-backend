@@ -137,8 +137,8 @@ function Card({children,style,th,pad=20}){
 }
 
 function StatusBadge({status,th}){
-  const m={active:{bg:th.successSoft,c:th.success},pending:{bg:th.warningSoft,c:th.warning},rejected:{bg:th.errorSoft,c:th.error},rented:{bg:th.bgAlt,c:th.inkSoft}};
-  const k=(status||'').toLowerCase();const s=m[k]||m.active;
+  const m={active:{bg:th.successSoft,c:th.success},pending:{bg:th.warningSoft,c:th.warning},rejected:{bg:th.errorSoft,c:th.error},rented:{bg:th.bgAlt,c:th.inkSoft},draft:{bg:th.bgAlt,c:th.inkSoft}};
+  const k=(status||'').toLowerCase();const s=m[k]||m.draft;
   return<span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px 3px 7px',borderRadius:999,background:s.bg,color:s.c,fontSize:11.5,fontWeight:600,letterSpacing:.1}}>
     <span style={{width:5,height:5,borderRadius:3,background:s.c}}/>{cap(status)}
   </span>;
@@ -326,9 +326,9 @@ function LoginPage({onLogin,th}){
 }
 
 // ─── reject modal ───────────────────────────────────────────────
-function RejectModal({th,onConfirm,onClose,loading}){
+function RejectModal({th,onConfirm,onClose,loading,presets}){
   const[reason,setReason]=React.useState('');
-  const presets=['Title or content violates guidelines','Stock or fake photos used','Price seems unrealistic','Duplicate of an existing listing','Missing required information'];
+  presets=presets||['Title or content violates guidelines','Stock or fake photos used','Price seems unrealistic','Duplicate of an existing listing','Missing required information'];
   return(
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
       <div style={{animation:'fadeIn .2s ease'}}>
@@ -614,12 +614,14 @@ function UserSessionsModal({th,user,api,onClose}){
 // ─── sidebar ────────────────────────────────────────────────────
 function Sidebar({th,page,setPage,counts,user}){
   const nav=[
-    {id:'dashboard', label:'Dashboard', icon:'home'},
-    {id:'approvals', label:'Approvals',  icon:'approve', badge:counts.pending},
-    {id:'listings',  label:'Listings',   icon:'listing',  badge:counts.listings},
-    {id:'users',     label:'Users',      icon:'users',    badge:counts.users},
-    {id:'sessions',  label:'Sessions',   icon:'device'},
-    {id:'analytics', label:'Analytics',  icon:'chart'},
+    {id:'dashboard',     label:'Dashboard',     icon:'home'},
+    {id:'approvals',     label:'Approvals',      icon:'approve', badge:counts.pending},
+    {id:'listings',      label:'Listings',        icon:'listing',  badge:counts.listings},
+    {id:'hostels',       label:'Hostels',         icon:'building', badge:counts.pending_hostels},
+    {id:'users',         label:'Users',           icon:'users',    badge:counts.users},
+    {id:'sessions',      label:'Sessions',        icon:'device'},
+    {id:'analytics',     label:'Analytics',       icon:'chart'},
+    {id:'create-owner',  label:'Create Owner',    icon:'plus'},
   ];
   return(
     <aside style={{width:240,flexShrink:0,height:'100vh',position:'sticky',top:0,background:th.bgAlt,borderRight:`1px solid ${th.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
@@ -870,6 +872,7 @@ function PageDashboard({th,setPage,api}){
 function PageListings({th,api,onViewDetail,metaTypes,metaFacings}){
   const toast=useToast();
   const[filter,setFilter]=React.useState('all');
+  const[catFilter,setCatFilter]=React.useState('all');
   const[search,setSearch]=React.useState('');
   const[rows,setRows]=React.useState([]);
   const[meta,setMeta]=React.useState(null);
@@ -883,11 +886,12 @@ function PageListings({th,api,onViewDetail,metaTypes,metaFacings}){
     setLoading(true);
     const p=new URLSearchParams({page:pg});
     if(filter!=='all')p.set('status',filter);
+    if(catFilter!=='all')p.set('category',catFilter);
     if(search)p.set('search',search);
     api.get(`/admin/listings?${p}`).then(r=>{setRows(r.data||[]);setMeta(r.meta||null);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
-  },[filter,search,page]);
+  },[filter,catFilter,search,page]);
 
-  React.useEffect(()=>{setPage(1);},[filter,search]);
+  React.useEffect(()=>{setPage(1);},[filter,catFilter,search]);
   React.useEffect(()=>{const t=setTimeout(()=>load(page),300);return()=>clearTimeout(t);},[filter,search,page]);
 
   const approve=async id=>{
@@ -960,6 +964,11 @@ function PageListings({th,api,onViewDetail,metaTypes,metaFacings}){
       <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
         <Tabs th={th} value={filter} onChange={v=>{setFilter(v);setPage(1);}} options={tabs}/>
         <div style={{flex:1}}/>
+        <select value={catFilter} onChange={e=>{setCatFilter(e.target.value);setPage(1);}} style={{height:32,borderRadius:7,border:`1px solid ${th.border}`,background:th.bg,color:th.ink,fontSize:12.5,padding:'0 10px',cursor:'pointer'}}>
+          <option value="all">All types</option>
+          <option value="flat">Flat</option>
+          <option value="mess">Mess</option>
+        </select>
         <SearchBar th={th} value={search} onChange={v=>{setSearch(v);setPage(1);}} placeholder="Search listings…"/>
         <IBtn th={th} icon="refresh" title="Refresh" onClick={()=>load(page)}/>
       </div>
@@ -982,7 +991,10 @@ function PageListings({th,api,onViewDetail,metaTypes,metaFacings}){
                   onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
                   <td style={{padding:'11px 16px',fontSize:11,color:th.inkFaint,fontFamily:'ui-monospace,monospace',whiteSpace:'nowrap'}}>{(l.id||'').slice(0,8)}</td>
                   <td style={{padding:'10px 16px',maxWidth:240}}>
-                    <div style={{fontSize:13.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title}</div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <div style={{fontSize:13.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title}</div>
+                      <span style={{flexShrink:0,padding:'1px 6px',borderRadius:999,fontSize:10.5,fontWeight:700,textTransform:'uppercase',letterSpacing:.4,background:l.category==='mess'?'#FFF3E0':'#E3F2FD',color:l.category==='mess'?'#E65100':'#1565C0'}}>{l.category||'flat'}</span>
+                    </div>
                     <div style={{fontSize:11.5,color:th.inkSoft,marginTop:2}}>{l.created}</div>
                     {l.status==='rejected'&&l.rejection_reason&&(
                       <div style={{fontSize:11.5,color:th.error,marginTop:4,display:'flex',alignItems:'flex-start',gap:4,lineHeight:1.4}}>
@@ -1582,6 +1594,205 @@ function PageSessions({th,api}){
   );
 }
 
+// ─── hostels page ───────────────────────────────────────────────
+const HOSTEL_REJECT_PRESETS=['Incomplete room or seat information','Photos do not match the hostel description','Price seems unrealistic for the area','Missing address or location details','Duplicate of an existing hostel listing'];
+
+function PageHostels({th,api}){
+  const toast=useToast();
+  const[filter,setFilter]=React.useState('all');
+  const[search,setSearch]=React.useState('');
+  const[rows,setRows]=React.useState([]);
+  const[meta,setMeta]=React.useState(null);
+  const[page,setPage]=React.useState(1);
+  const[loading,setLoading]=React.useState(true);
+  const[rejectTarget,setRejectTarget]=React.useState(null);
+  const[acting,setActing]=React.useState(null);
+
+  const load=React.useCallback((pg=page)=>{
+    setLoading(true);
+    const p=new URLSearchParams({page:pg});
+    if(filter!=='all')p.set('status',filter);
+    if(search)p.set('search',search);
+    api.get(`/admin/hostels?${p}`).then(r=>{setRows(r.data||[]);setMeta(r.meta||null);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[filter,search,page]);
+
+  React.useEffect(()=>{setPage(1);},[filter,search]);
+  React.useEffect(()=>{const t=setTimeout(()=>load(page),300);return()=>clearTimeout(t);},[filter,search,page]);
+
+  const approve=async id=>{
+    setActing(id+'a');
+    try{await api.post(`/admin/hostels/${id}/approve`);toast('Hostel approved and is now live!','success');load(page);}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+  const reject=async(id,reason)=>{
+    setActing(id+'r');
+    try{await api.post(`/admin/hostels/${id}/reject`,{reason});toast('Hostel rejected.','info');setRejectTarget(null);load(page);}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  const tabs=[
+    {value:'all',     label:'All',      count:meta?.total},
+    {value:'pending', label:'Pending'},
+    {value:'active',  label:'Active'},
+    {value:'rejected',label:'Rejected'},
+    {value:'draft',   label:'Draft'},
+  ];
+
+  const genderBadge=g=>{
+    const m={male:{bg:alpha('#1D6FD1',.12),c:'#1D6FD1'},female:{bg:alpha('#B53D7C',.12),c:'#B53D7C'},mixed:{bg:alpha('#1A6B72',.12),c:'#1A6B72'}};
+    const s=m[g]||m.mixed;
+    return<span style={{padding:'2px 8px',borderRadius:999,background:s.bg,color:s.c,fontSize:11,fontWeight:600,textTransform:'capitalize'}}>{g||'—'}</span>;
+  };
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {rejectTarget&&<RejectModal th={th} presets={HOSTEL_REJECT_PRESETS} loading={acting===rejectTarget+'r'} onConfirm={r=>reject(rejectTarget,r)} onClose={()=>setRejectTarget(null)}/>}
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <Tabs th={th} value={filter} onChange={v=>{setFilter(v);setPage(1);}} options={tabs}/>
+        <div style={{flex:1}}/>
+        <SearchBar th={th} value={search} onChange={v=>{setSearch(v);setPage(1);}} placeholder="Search hostels, owner, address…"/>
+        <IBtn th={th} icon="refresh" title="Refresh" onClick={()=>load(page)}/>
+      </div>
+      <Card th={th} pad={0}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontFamily:FN_FONT}}>
+            <thead>
+              <tr style={{background:th.bgAlt}}>
+                {['#','Hostel / Address','Owner','Type','Policy','Price','Seats','Status','Actions'].map((h,i)=>(
+                  <th key={i} style={{textAlign:'left',fontSize:10.5,color:th.inkSoft,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',padding:'12px 16px',borderBottom:`1px solid ${th.border}`,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading?[1,2,3,4,5].map(i=>(
+                <tr key={i}><td colSpan={9} style={{padding:'12px 16px',borderBottom:`1px solid ${th.borderSoft}`}}><Skeleton h={20}/></td></tr>
+              )):rows.map(h=>(
+                <tr key={h.id} style={{borderBottom:`1px solid ${th.borderSoft}`,transition:'background .12s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=th.bgAlt}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{padding:'11px 16px',fontSize:11,color:th.inkFaint,fontFamily:'ui-monospace,monospace',whiteSpace:'nowrap'}}>{(h.id||'').slice(0,8)}</td>
+                  <td style={{padding:'10px 16px',maxWidth:220}}>
+                    <div style={{fontSize:13.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{h.name}</div>
+                    <div style={{fontSize:11.5,color:th.inkSoft,marginTop:2,display:'flex',alignItems:'center',gap:4}}>
+                      <Icon name="pin" size={10}/><span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:160}}>{h.address||'—'}</span>
+                    </div>
+                    {h.status==='rejected'&&h.rejection_reason&&(
+                      <div style={{fontSize:11.5,color:th.error,marginTop:4,display:'flex',alignItems:'flex-start',gap:4,lineHeight:1.4}}>
+                        <Icon name="x" size={11} style={{marginTop:1,flexShrink:0}}/>
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:180}}>{h.rejection_reason}</span>
+                      </div>
+                    )}
+                    <div style={{fontSize:11,color:th.inkFaint,marginTop:2}}>{h.created}</div>
+                  </td>
+                  <td style={{padding:'11px 16px',fontSize:13,color:th.inkMid,whiteSpace:'nowrap'}}>
+                    <div>{h.owner||'—'}</div>
+                    {h.owner_email&&<div style={{fontSize:11,color:th.inkFaint}}>{h.owner_email}</div>}
+                  </td>
+                  <td style={{padding:'11px 16px'}}>
+                    <span style={{padding:'2px 8px',borderRadius:999,background:th.primarySoft,color:th.primaryInk,fontSize:11.5,fontWeight:600,whiteSpace:'nowrap'}}>{h.type}</span>
+                  </td>
+                  <td style={{padding:'11px 16px'}}>{genderBadge(h.gender_policy)}</td>
+                  <td style={{padding:'11px 16px',fontSize:13.5,fontWeight:700,color:th.ink,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>
+                    {bdt(h.price)}<span style={{fontSize:10,color:th.inkSoft,fontWeight:400}}>/{h.price_unit}</span>
+                  </td>
+                  <td style={{padding:'11px 16px',fontSize:13,color:th.inkMid,whiteSpace:'nowrap'}}>
+                    <span style={{color:h.vacant_seats>0?th.success:th.inkFaint,fontWeight:700}}>{h.vacant_seats}</span>
+                    <span style={{color:th.inkFaint}}>/{h.total_seats}</span>
+                    <div style={{fontSize:10.5,color:th.inkFaint}}>vacant/total</div>
+                  </td>
+                  <td style={{padding:'11px 16px'}}><StatusBadge status={h.status} th={th}/></td>
+                  <td style={{padding:'8px 16px',textAlign:'right'}}>
+                    <div style={{display:'inline-flex',gap:5}}>
+                      {(h.status==='pending'||h.status==='rejected')&&(
+                        <IBtn th={th} icon="check" tone="success" title="Approve" loading={acting===h.id+'a'} onClick={()=>approve(h.id)}/>
+                      )}
+                      {(h.status==='pending'||h.status==='active')&&(
+                        <IBtn th={th} icon="x" tone="danger" title="Reject" loading={acting===h.id+'r'} onClick={()=>setRejectTarget(h.id)}/>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading&&rows.length===0&&(
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <div style={{width:48,height:48,borderRadius:14,background:th.bgAlt,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Icon name="building" size={24} style={{color:th.inkFaint}}/></div>
+            <div style={{fontSize:14,fontWeight:600,color:th.ink}}>No hostels found</div>
+            <div style={{fontSize:13,color:th.inkSoft,marginTop:4}}>Try adjusting the filters or search term.</div>
+          </div>
+        )}
+        <Pagination meta={meta} onPage={p=>{setPage(p);load(p);}} th={th}/>
+      </Card>
+    </div>
+  );
+}
+
+// ─── create owner page ──────────────────────────────────────────
+function PageCreateOwner({th,api}){
+  const toast=useToast();
+  const[f,setF]=React.useState({name:'',email:'',phone:'',password:''});
+  const[loading,setLoading]=React.useState(false);
+  const[created,setCreated]=React.useState(null);
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+
+  const submit=async e=>{
+    e.preventDefault();
+    if(!f.name||!f.email||!f.phone||!f.password){toast('All fields are required.','error');return;}
+    setLoading(true);
+    try{
+      const res=await api.post('/admin/owners',{name:f.name,email:f.email,phone:f.phone,password:f.password});
+      setCreated(res.data);
+      setF({name:'',email:'',phone:'',password:''});
+      toast('Owner account created successfully!','success');
+    }catch(e){toast(e.message,'error');}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{padding:28,display:'flex',justifyContent:'center'}}>
+      <div style={{width:'100%',maxWidth:520}}>
+        {created&&(
+          <div style={{marginBottom:20,padding:'14px 16px',borderRadius:12,background:th.successSoft,border:`1px solid ${alpha(th.success,.25)}`,display:'flex',alignItems:'flex-start',gap:10}}>
+            <span style={{color:th.success,marginTop:1,flexShrink:0}}><Icon name="ok" size={16}/></span>
+            <div style={{fontSize:13.5,color:th.ink}}>
+              Owner account created for <strong>{created.name}</strong>.
+              Share credentials: <strong>{created.email}</strong> / the password you set.
+            </div>
+          </div>
+        )}
+        <Card th={th}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
+            <div style={{width:42,height:42,borderRadius:12,background:th.primarySoft,color:th.primaryInk,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <Icon name="users" size={22}/>
+            </div>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:th.ink}}>Create Owner Account</div>
+              <div style={{fontSize:12.5,color:th.inkSoft,marginTop:2}}>The owner will use these credentials to log in and post hostels</div>
+            </div>
+          </div>
+          <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:14}}>
+            <Field label="Full name" th={th}><Input value={f.name} onChange={v=>set('name',v)} placeholder="e.g. Asha Begum" th={th} required/></Field>
+            <Field label="Email address" th={th}><Input value={f.email} onChange={v=>set('email',v)} type="email" placeholder="owner@example.com" th={th} required/></Field>
+            <Field label="Phone number" th={th}><Input value={f.phone} onChange={v=>set('phone',v)} placeholder="01712345678" th={th} required/></Field>
+            <Field label="Password" th={th}><Input value={f.password} onChange={v=>set('password',v)} type="password" placeholder="Minimum 8 characters" th={th} required/></Field>
+            <div style={{padding:'11px 14px',borderRadius:10,background:th.bgAlt,border:`1px solid ${th.border}`,display:'flex',alignItems:'flex-start',gap:8,fontSize:13,color:th.inkMid}}>
+              <span style={{marginTop:1,flexShrink:0,color:th.primary}}><Icon name="info" size={14}/></span>
+              The account will be created with <strong style={{color:th.ink,margin:'0 3px'}}>Owner</strong> role and ready to post hostels immediately.
+            </div>
+            <button type="submit" disabled={loading} style={{height:44,borderRadius:11,background:loading?alpha(th.primary,.7):th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:15,cursor:loading?'default':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:`0 4px 14px ${alpha(th.primary,.3)}`,marginTop:4}}>
+              {loading?<><Icon name="spin" size={16}/>Creating…</>:<><Icon name="plus" size={16}/>Create Owner Account</>}
+            </button>
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 // ─── analytics page ─────────────────────────────────────────────
 function PageAnalytics({th,api}){
   const toast=useToast();
@@ -1719,7 +1930,7 @@ function App(){
   const[dark,setDark]=React.useState(()=>localStorage.getItem('fn_dark')!=='false');
   const[page,setPage]=React.useState('dashboard');
   const[detailId,setDetailId]=React.useState(null);
-  const[counts,setCounts]=React.useState({pending:0,listings:0,users:0});
+  const[counts,setCounts]=React.useState({pending:0,listings:0,users:0,pending_hostels:0});
   const[metaTypes,setMetaTypes]=React.useState([]);
   const[metaFacings,setMetaFacings]=React.useState([]);
 
@@ -1746,7 +1957,7 @@ function App(){
     if(!token)return;
     api.get('/admin/dashboard').then(r=>{
       const s=r.data?.stats||{};
-      setCounts({pending:s.pending_approval||0,listings:s.total_listings||0,users:s.total_users||0});
+      setCounts({pending:s.pending_approval||0,listings:s.total_listings||0,users:s.total_users||0,pending_hostels:s.pending_hostels||0});
     }).catch(()=>{});
   },[token,page]);
 
@@ -1770,9 +1981,11 @@ function App(){
     approvals:       {title:'Approvals',        crumb:'Listings · Pending review'},
     listings:        {title:'Listings',          crumb:'Listings · All'},
     'listing-detail':{title:'Listing Details',  crumb:'Listings · Detail'},
+    hostels:         {title:'Hostels & Mess',    crumb:'Hostels · All'},
     users:           {title:'Users',             crumb:'People · All'},
     sessions:        {title:'Sessions',          crumb:'People · Login history'},
     analytics:       {title:'Analytics',         crumb:'Insights · Last 14 days'},
+    'create-owner':  {title:'Create Owner',      crumb:'People · Create owner account'},
   };
   const m=pagesMeta[page]||{title:page,crumb:''};
 
@@ -1781,9 +1994,11 @@ function App(){
     approvals:<PageApprovals th={th} api={api}/>,
     listings: <PageListings  th={th} api={api} onViewDetail={viewDetail} metaTypes={metaTypes} metaFacings={metaFacings}/>,
     'listing-detail':detailId?<PageListingDetail th={th} api={api} listingId={detailId} onBack={backToListings} metaTypes={metaTypes} metaFacings={metaFacings}/>:null,
+    hostels:  <PageHostels   th={th} api={api}/>,
     users:    <PageUsers     th={th} api={api}/>,
     sessions: <PageSessions  th={th} api={api}/>,
     analytics:<PageAnalytics th={th} api={api}/>,
+    'create-owner':<PageCreateOwner th={th} api={api}/>,
   };
 
   // For sidebar highlight, treat listing-detail as listings

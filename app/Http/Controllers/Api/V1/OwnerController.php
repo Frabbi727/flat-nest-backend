@@ -19,7 +19,7 @@ class OwnerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $filters   = $request->only(['status', 'type_id']);
+        $filters   = $request->only(['status', 'category', 'type_id']);
         $paginator = $this->listings->getOwnerDashboard($request->user()->id, $filters);
 
         return ApiResponse::paginated(ListingResource::collection($paginator), $paginator);

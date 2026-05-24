@@ -11,11 +11,12 @@ class StoreListingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'category'        => 'nullable|in:flat,mess',
             'title'           => 'required|string|max:255',
-            'listing_type_id' => 'required|integer|exists:listing_types,id',
+            'listing_type_id' => 'required_unless:category,mess|nullable|integer|exists:listing_types,id',
             'price'           => 'required|integer|min:0',
-            'beds'            => 'required|integer|min:0',
-            'baths'           => 'required|integer|min:0',
+            'beds'            => 'required_unless:category,mess|nullable|integer|min:0',
+            'baths'           => 'required_unless:category,mess|nullable|integer|min:0',
             'deposit'         => 'nullable|integer|min:0',
             'size'            => 'nullable|integer|min:0',
             'description'     => 'nullable|string',

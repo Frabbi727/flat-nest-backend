@@ -11,6 +11,7 @@ class UpdateListingRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'category'          => 'nullable|in:flat,mess',
             'title'             => 'nullable|string|max:255',
             'listing_type_id'   => 'nullable|integer|exists:listing_types,id',
             'price'             => 'nullable|integer|min:0',

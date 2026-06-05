@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
@@ -36,6 +37,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/meta/roles',           [MetaController::class, 'roles']);
     Route::get('/meta/listing-types',   [MetaController::class, 'types']);
     Route::get('/meta/listing-facings', [MetaController::class, 'facings']);
+    Route::get('/meta/links',           [MetaController::class, 'links']);
 
     // Amenities — public read, protected write
     Route::get('/amenities', [AmenityController::class, 'index']);
@@ -51,13 +53,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/listings/{id}',   [ListingController::class, 'show']);
 
         // Auth
-        Route::post ('/auth/logout',           [AuthController::class, 'logout']);
-        Route::patch('/auth/register/details', [AuthController::class, 'registerDetails']);
-        Route::patch('/auth/register/avatar',  [AuthController::class, 'registerAvatar']);
+        Route::post  ('/auth/logout',          [AuthController::class, 'logout']);
+        Route::delete('/auth/account',         [AuthController::class, 'deleteAccount']);
+        Route::patch ('/auth/register/details', [AuthController::class, 'registerDetails']);
+        Route::patch ('/auth/register/avatar',  [AuthController::class, 'registerAvatar']);
 
         // Wishlist
         Route::get ('/wishlist',                         [WishlistController::class, 'index']);
         Route::post('/wishlist/{listing_id}/toggle',     [WishlistController::class, 'toggle']);
+
 
         // Owner
         Route::middleware('owner')->group(function () {
@@ -90,6 +94,7 @@ Route::prefix('v1')->group(function () {
 
         // Device / FCM
         Route::post('/device/fcm-token', [DeviceController::class, 'registerFcmToken']);
+        Route::get ('/device/sessions',  [DeviceController::class, 'sessions']);
 
         // User
         Route::patch('/user/location', [UserController::class, 'updateLocation']);
@@ -99,5 +104,21 @@ Route::prefix('v1')->group(function () {
         Route::get  ('/notifications/unread-count',     [NotificationController::class, 'unreadCount']);
         Route::patch('/notifications/read-all',         [NotificationController::class, 'markAllRead']);
         Route::patch('/notifications/{id}/read',        [NotificationController::class, 'markRead']);
+
+        // Admin API
+        Route::middleware('admin')->prefix('admin')->group(function () {
+            Route::get   ('/dashboard',                  [AdminController::class, 'dashboard']);
+            Route::get   ('/listings',                   [AdminController::class, 'listings']);
+            Route::get   ('/listings/{id}',              [AdminController::class, 'showListing']);
+            Route::get   ('/users',                      [AdminController::class, 'users']);
+            Route::get   ('/users/{id}/sessions',        [AdminController::class, 'userSessions']);
+            Route::get   ('/sessions',                   [AdminController::class, 'allSessions']);
+            Route::post  ('/listings/{id}/approve',      [AdminController::class, 'approveListing']);
+            Route::post  ('/listings/{id}/reject',       [AdminController::class, 'rejectListing']);
+            Route::patch ('/listings/{id}',              [AdminController::class, 'updateListing']);
+            Route::delete('/listings/{id}',              [AdminController::class, 'deleteListing']);
+            Route::patch ('/users/{id}',                 [AdminController::class, 'updateUser']);
+            Route::delete('/users/{id}',                 [AdminController::class, 'deleteUser']);
+        });
     });
 });

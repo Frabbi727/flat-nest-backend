@@ -31,7 +31,7 @@ class Listing extends Model
         parent::boot();
         static::creating(fn ($model) => $model->id = (string) Str::uuid());
         static::deleting(fn (Listing $listing) =>
-            Storage::disk(config('filesystems.default'))->deleteDirectory('listings/' . $listing->id)
+            Storage::disk('public')->deleteDirectory('listings/' . $listing->id)
         );
     }
 

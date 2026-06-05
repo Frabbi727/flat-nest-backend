@@ -12,7 +12,7 @@ class UploadListingPhotosRequest extends FormRequest
     {
         return [
             'photos'   => 'required|array|min:1',
-            'photos.*' => 'image|mimes:jpg,jpeg,png|max:5120',
+            'photos.*' => 'image|mimes:jpg,jpeg,png|max:200',
         ];
     }
 }

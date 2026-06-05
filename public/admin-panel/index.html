@@ -1,0 +1,1808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FlatNest — Admin Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="icon" type="image/png" href="/flatnest_icon_v4.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+<style>
+  html,body{margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+  *,*::before,*::after{box-sizing:border-box}
+  button{font-family:inherit;cursor:pointer}
+  button:focus-visible{outline:2px solid rgba(70,167,174,.5);outline-offset:2px}
+  input,textarea{font-family:inherit}
+  input:focus,textarea:focus{outline:none}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:rgba(128,128,128,.2);border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(128,128,128,.35)}
+  ::-webkit-scrollbar-track{background:transparent}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideIn{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:translateX(0)}}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+const API = '/api/v1';
+const FN_FONT = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif";
+
+// ─── theme ──────────────────────────────────────────────────────
+const LIGHT = {primary:'#1A6B72',primarySoft:'#E6F0F1',primaryInk:'#0E484D',primaryBorder:'#B8D8DA',secondary:'#FF6B6B',secondarySoft:'#FFE9E9',bg:'#F4F6F9',bgAlt:'#ECEEF2',surface:'#FFFFFF',border:'#E4E7EC',borderSoft:'#F0F2F5',ink:'#0F1117',inkMid:'#525866',inkSoft:'#8C93A3',inkFaint:'#C1C8D4',success:'#12B76A',warning:'#F79009',error:'#F04438',successSoft:'#ECFDF3',warningSoft:'#FFFAEB',errorSoft:'#FEF3F2',shadow:'0 1px 3px rgba(16,24,40,.08),0 4px 16px rgba(16,24,40,.04)'};
+const DARK   = {primary:'#46A7AE',primarySoft:'#0C2628',primaryInk:'#A7DDE1',primaryBorder:'#1E4548',secondary:'#FF8585',secondarySoft:'#3A1F1F',bg:'#0D0F12',bgAlt:'#13161A',surface:'#1A1D22',border:'#252A30',borderSoft:'#1E2228',ink:'#F0F2F5',inkMid:'#A8B0BE',inkSoft:'#6B7585',inkFaint:'#3A4048',success:'#17B26A',warning:'#F79009',error:'#F04438',successSoft:'#052E16',warningSoft:'#1C1407',errorSoft:'#1C0A09',shadow:'0 1px 3px rgba(0,0,0,.35),0 4px 16px rgba(0,0,0,.25)'};
+
+function hexToRgb(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];}
+function alpha(hex,a){const[r,g,b]=hexToRgb(hex||'#888');return`rgba(${r},${g},${b},${a})`;}
+function lighten(hex,a){const[r,g,b]=hexToRgb(hex);return '#'+[r+(255-r)*a,g+(255-g)*a,b+(255-b)*a].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');}
+function darken(hex,a){const[r,g,b]=hexToRgb(hex);return '#'+[r*(1-a),g*(1-a),b*(1-a)].map(v=>Math.round(Math.max(0,Math.min(255,v))).toString(16).padStart(2,'0')).join('');}
+
+function theme(dark,accent='#1A6B72'){
+  const base=dark?DARK:LIGHT;
+  const key=(accent||'#1A6B72').toUpperCase();
+  return{...base,primary:dark?lighten(key,.2):key,primarySoft:dark?darken(key,.55):lighten(key,.88),primaryInk:dark?lighten(key,.45):darken(key,.15),dark,accent:key};
+}
+
+function bdt(n){return'৳'+(Math.round(n||0)).toLocaleString('en-US');}
+function cap(s){return s?s.charAt(0).toUpperCase()+s.slice(1):s;}
+function ini(name){return (name||'?').split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase();}
+function strhash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h;}
+
+// ─── icons ──────────────────────────────────────────────────────
+function Icon({name,size=18,style:s}){
+  const p={width:size,height:size,viewBox:'0 0 20 20',fill:'none',stroke:'currentColor',strokeWidth:1.6,strokeLinecap:'round',strokeLinejoin:'round',style:{display:'block',flexShrink:0,...s}};
+  switch(name){
+    case 'home':     return<svg {...p}><path d="M3 9.5 10 3l7 6.5V17a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z"/><path d="M7 18v-5h6v5"/></svg>;
+    case 'listing':  return<svg {...p}><rect x="3" y="3" width="14" height="14" rx="2"/><path d="M3 8h14M7 12h2M7 15h2M11 12h2M11 15h2"/></svg>;
+    case 'users':    return<svg {...p}><circle cx="8" cy="7.5" r="2.8"/><path d="M2.5 17c.6-2.6 2.9-4 5.5-4s4.9 1.4 5.5 4"/><circle cx="14.5" cy="6" r="2.2"/><path d="M17.8 13.6c-.9-.9-2.1-1.4-3.3-1.4"/></svg>;
+    case 'approve':  return<svg {...p}><circle cx="10" cy="10" r="7.5"/><path d="m6.8 10 2.2 2.2 4.2-4.4"/></svg>;
+    case 'chart':    return<svg {...p}><path d="M3 17V8M9 17V4M15 17v-6"/><path d="M2.5 17h15"/></svg>;
+    case 'search':   return<svg {...p}><circle cx="9" cy="9" r="5.5"/><path d="m17 17-3.8-3.8"/></svg>;
+    case 'trash':    return<svg {...p}><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11"/></svg>;
+    case 'check':    return<svg {...p}><path d="m4 10 4 4 8-9"/></svg>;
+    case 'x':        return<svg {...p}><path d="m5 5 10 10M15 5 5 15"/></svg>;
+    case 'eye':      return<svg {...p}><path d="M2 10s2.8-5 8-5 8 5 8 5-2.8 5-8 5-8-5-8-5Z"/><circle cx="10" cy="10" r="2.4"/></svg>;
+    case 'chevron':  return<svg {...p}><path d="m8 5 5 5-5 5"/></svg>;
+    case 'chevLeft': return<svg {...p}><path d="m12 5-5 5 5 5"/></svg>;
+    case 'logout':   return<svg {...p}><path d="M11 4H5v12h6"/><path d="m14 7 3 3-3 3M9 10h8"/></svg>;
+    case 'mail':     return<svg {...p}><rect x="3" y="5" width="14" height="10" rx="1.5"/><path d="m3.5 6 6.5 5 6.5-5"/></svg>;
+    case 'phone':    return<svg {...p}><path d="M5 3h3l1.5 4-2 1.5a10 10 0 0 0 4 4L13 10.5 17 12v3a2 2 0 0 1-2 2A12 12 0 0 1 3 5a2 2 0 0 1 2-2Z"/></svg>;
+    case 'pin':      return<svg {...p}><path d="M10 17s-5-5.5-5-10a5 5 0 0 1 10 0c0 4.5-5 10-5 10Z"/><circle cx="10" cy="7" r="2"/></svg>;
+    case 'sun':      return<svg {...p}><circle cx="10" cy="10" r="3.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.9 4.9l1.4 1.4M13.7 13.7l1.4 1.4M4.9 15.1l1.4-1.4M13.7 6.3l1.4-1.4"/></svg>;
+    case 'moon':     return<svg {...p}><path d="M17 12.5A7 7 0 1 1 7.5 3a5.5 5.5 0 0 0 9.5 9.5Z"/></svg>;
+    case 'spin':     return<svg {...p} style={{animation:'spin 1s linear infinite',...s}}><path d="M10 3a7 7 0 0 1 7 7" strokeWidth="2"/></svg>;
+    case 'up':       return<svg {...p}><path d="M10 16V4M5 9l5-5 5 5"/></svg>;
+    case 'dn':       return<svg {...p}><path d="M10 4v12M5 11l5 5 5-5"/></svg>;
+    case 'building': return<svg {...p}><rect x="3" y="2" width="14" height="16" rx="1.5"/><path d="M7 6h2M11 6h2M7 10h2M11 10h2M7 14h2M11 14h2"/></svg>;
+    case 'plus':     return<svg {...p}><path d="M10 4v12M4 10h12"/></svg>;
+    case 'refresh':  return<svg {...p}><path d="M16.5 8A7 7 0 1 0 17 11"/><path d="M17 5v3h-3"/></svg>;
+    case 'info':     return<svg {...p}><circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 7v.5"/></svg>;
+    case 'warn':     return<svg {...p}><path d="M10 3 2 17h16L10 3Z"/><path d="M10 9v4M10 15v.5"/></svg>;
+    case 'ok':       return<svg {...p}><circle cx="10" cy="10" r="7.5"/><path d="m6.8 10 2.2 2.2 4.2-4.4"/></svg>;
+    case 'edit':     return<svg {...p}><path d="M13.5 3.5 16.5 6.5 7 16H4v-3l9.5-9.5Z"/></svg>;
+    case 'save':     return<svg {...p}><path d="M4 4h9l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M14 4v4H6V4M7 13h6"/></svg>;
+    case 'device':   return<svg {...p}><rect x="5" y="2" width="10" height="16" rx="1.5"/><line x1="10" y1="15" x2="10" y2="15.5"/></svg>;
+    default: return null;
+  }
+}
+
+// ─── toast system ───────────────────────────────────────────────
+const ToastCtx = React.createContext(null);
+
+function ToastProvider({children}){
+  const [toasts,setToasts] = React.useState([]);
+  const add = React.useCallback((msg,type='info',dur=4000)=>{
+    const id = Date.now()+Math.random();
+    setToasts(t=>[...t,{id,msg,type}]);
+    setTimeout(()=>setToasts(t=>t.filter(x=>x.id!==id)),dur);
+  },[]);
+  const remove = id => setToasts(t=>t.filter(x=>x.id!==id));
+  return(
+    <ToastCtx.Provider value={add}>
+      {children}
+      <div style={{position:'fixed',bottom:24,right:24,zIndex:9999,display:'flex',flexDirection:'column',gap:8,pointerEvents:'none'}}>
+        {toasts.map(t=><Toast key={t.id} t={t} onClose={()=>remove(t.id)}/>)}
+      </div>
+    </ToastCtx.Provider>
+  );
+}
+
+function Toast({t,onClose}){
+  const colors={success:'#12B76A',error:'#F04438',warning:'#F79009',info:'#46A7AE'};
+  const icons={success:'ok',error:'x',warning:'warn',info:'info'};
+  const bgs={success:'#F0FDF6',error:'#FEF3F2',warning:'#FFFAEB',info:'#F0FAFB'};
+  const c=colors[t.type]||colors.info;
+  return(
+    <div style={{pointerEvents:'all',display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',borderRadius:12,background:bgs[t.type]||bgs.info,border:`1px solid ${alpha(c,.25)}`,boxShadow:'0 4px 20px rgba(0,0,0,.12)',animation:'slideIn .25s ease',minWidth:280,maxWidth:380}}>
+      <span style={{color:c,marginTop:1,flexShrink:0}}><Icon name={icons[t.type]||'info'} size={16}/></span>
+      <span style={{fontSize:13.5,color:'#0F1117',flex:1,lineHeight:1.45}}>{t.msg}</span>
+      <button onClick={onClose} style={{background:'none',border:'none',color:'#8C93A3',padding:0,cursor:'pointer',flexShrink:0,marginTop:1}}><Icon name="x" size={14}/></button>
+    </div>
+  );
+}
+
+function useToast(){return React.useContext(ToastCtx);}
+
+// ─── primitives ─────────────────────────────────────────────────
+function Card({children,style,th,pad=20}){
+  return<div style={{background:th.surface,border:`1px solid ${th.border}`,borderRadius:16,padding:pad,boxShadow:th.shadow,...style}}>{children}</div>;
+}
+
+function StatusBadge({status,th}){
+  const m={active:{bg:th.successSoft,c:th.success},pending:{bg:th.warningSoft,c:th.warning},rejected:{bg:th.errorSoft,c:th.error},rented:{bg:th.bgAlt,c:th.inkSoft}};
+  const k=(status||'').toLowerCase();const s=m[k]||m.active;
+  return<span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'3px 9px 3px 7px',borderRadius:999,background:s.bg,color:s.c,fontSize:11.5,fontWeight:600,letterSpacing:.1}}>
+    <span style={{width:5,height:5,borderRadius:3,background:s.c}}/>{cap(status)}
+  </span>;
+}
+
+function RoleBadge({role,th}){
+  const o=role==='owner';
+  return<span style={{padding:'2px 9px',borderRadius:999,fontSize:11.5,fontWeight:600,textTransform:'capitalize',background:o?th.warningSoft:th.primarySoft,color:o?th.warning:th.primaryInk}}>{role||'—'}</span>;
+}
+
+function Avt({name,size=34,url}){
+  const n=name||'?',h=strhash(n);
+  const ini2=n.split(/\s+/).filter(Boolean).map(s=>s[0]).slice(0,2).join('').toUpperCase();
+  const hues=[211,158,280,34,12,196,260,340];
+  const hue=hues[h%hues.length];
+  if(url)return<img src={url} style={{width:size,height:size,borderRadius:size/2,objectFit:'cover',flexShrink:0}} alt={name}/>;
+  return<div style={{width:size,height:size,borderRadius:size/2,background:`hsl(${hue},55%,50%)`,color:'#fff',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:size*.36,fontWeight:700,flexShrink:0,letterSpacing:.5}}>{ini2}</div>;
+}
+
+function Tabs({value,onChange,options,th}){
+  return<div style={{display:'inline-flex',padding:3,gap:2,background:th.bgAlt,borderRadius:12,border:`1px solid ${th.border}`}}>
+    {options.map(o=>{
+      const v=typeof o==='string'?o:o.value,label=typeof o==='string'?o:o.label,count=typeof o==='object'?o.count:null,active=value===v;
+      return<button key={v} onClick={()=>onChange(v)} style={{padding:'6px 14px',borderRadius:9,border:'none',background:active?th.surface:'transparent',color:active?th.ink:th.inkSoft,fontSize:12.5,fontWeight:active?600:500,fontFamily:FN_FONT,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:6,boxShadow:active?th.shadow:'none',transition:'all .15s'}}>
+        {label}
+        {count!=null&&<span style={{minWidth:18,padding:'0 5px',height:18,borderRadius:9,background:active?th.primarySoft:'transparent',color:active?th.primaryInk:th.inkSoft,fontSize:10.5,fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center'}}>{count}</span>}
+      </button>;
+    })}
+  </div>;
+}
+
+function IBtn({icon,onClick,th,tone='default',title,loading}){
+  const c={default:{color:th.inkMid,bg:'transparent',border:th.border},primary:{color:th.primary,bg:th.primarySoft,border:th.primaryBorder},danger:{color:th.error,bg:th.errorSoft,border:alpha(th.error,.25)},success:{color:th.success,bg:th.successSoft,border:alpha(th.success,.25)}};
+  const s=c[tone]||c.default;
+  return<button title={title} onClick={onClick} disabled={loading} style={{width:32,height:32,borderRadius:8,background:s.bg,border:`1px solid ${s.border}`,color:s.color,cursor:loading?'default':'pointer',display:'inline-flex',alignItems:'center',justifyContent:'center',opacity:loading?.6:1,transition:'opacity .15s'}}>
+    {loading?<Icon name="spin" size={13}/>:<Icon name={icon} size={14}/>}
+  </button>;
+}
+
+function Sparkline({data,color,width=100,height=30}){
+  if(!data?.length)return null;
+  const mn=Math.min(...data),mx=Math.max(...data),rng=(mx-mn)||1,step=width/(data.length-1);
+  const pts=data.map((v,i)=>[i*step,height-2-((v-mn)/rng)*(height-4)]);
+  const path=pts.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  return<svg width={width} height={height} style={{display:'block',overflow:'visible'}}>
+    <defs><linearGradient id={'g'+color.replace('#','')} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity=".18"/><stop offset="100%" stopColor={color} stopOpacity="0"/></linearGradient></defs>
+    <path d={path+` L${width},${height} L0,${height} Z`} fill={`url(#g${color.replace('#','')})`}/>
+    <path d={path} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+    <circle cx={pts[pts.length-1][0]} cy={pts[pts.length-1][1]} r="3" fill={color} stroke="white" strokeWidth="1.5"/>
+  </svg>;
+}
+
+function Bars({data,color,height=100}){
+  const mx=Math.max(...data,1);
+  return<div style={{display:'flex',alignItems:'flex-end',gap:3,height}}>
+    {data.map((v,i)=><div key={i} style={{flex:1,height:`${Math.max(3,(v/mx)*100)}%`,background:i===data.length-1?color:alpha(color,.5),borderRadius:'3px 3px 2px 2px',transition:'height .35s ease'}}/>)}
+  </div>;
+}
+
+function Donut({data,size=136,thickness=18,th}){
+  const total=data.reduce((s,d)=>s+d.count,0)||1,cx=size/2,cy=size/2,r=(size-thickness)/2,c=2*Math.PI*r;
+  let offset=0;
+  return<div style={{position:'relative',width:size,height:size,flexShrink:0}}>
+    <svg width={size} height={size} style={{transform:'rotate(-90deg)'}}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={th.bgAlt} strokeWidth={thickness}/>
+      {data.map((d,i)=>{const len=(d.count/total)*c;const seg=<circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={d.color} strokeWidth={thickness} strokeDasharray={`${len} ${c-len}`} strokeDashoffset={-offset} strokeLinecap="butt"/>;offset+=len;return seg;})}
+    </svg>
+    <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+      <div style={{fontSize:22,fontWeight:700,color:th.ink,lineHeight:1}}>{total}</div>
+      <div style={{fontSize:10,color:th.inkSoft,marginTop:3,letterSpacing:.5,textTransform:'uppercase',fontWeight:600}}>Total</div>
+    </div>
+  </div>;
+}
+
+function Skeleton({w='100%',h=16,r=6}){
+  return<div style={{width:w,height:h,borderRadius:r,background:'rgba(128,128,128,.12)',animation:'pulse 1.6s ease-in-out infinite'}}/>;
+}
+
+// ─── pagination ─────────────────────────────────────────────────
+function Pagination({meta,onPage,th}){
+  if(!meta||meta.last_page<=1)return null;
+  const {current_page:cur,last_page:last,total,per_page}=meta;
+  const from=(cur-1)*per_page+1,to=Math.min(cur*per_page,total);
+  const pages=[];
+  for(let i=Math.max(1,cur-2);i<=Math.min(last,cur+2);i++)pages.push(i);
+  const btn=(label,disabled,onClick,active=false)=>(
+    <button onClick={onClick} disabled={disabled} style={{minWidth:34,height:34,padding:'0 8px',borderRadius:9,border:`1px solid ${active?th.primary:th.border}`,background:active?th.primary:th.surface,color:active?'#fff':disabled?th.inkFaint:th.inkMid,cursor:disabled?'default':'pointer',fontSize:13,fontWeight:active?700:500,fontFamily:FN_FONT,display:'inline-flex',alignItems:'center',justifyContent:'center',gap:4,transition:'all .15s'}}>{label}</button>
+  );
+  return(
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'14px 20px',borderTop:`1px solid ${th.border}`}}>
+      <div style={{fontSize:12.5,color:th.inkSoft}}>Showing <b style={{color:th.ink,fontWeight:600}}>{from}–{to}</b> of <b style={{color:th.ink,fontWeight:600}}>{total}</b></div>
+      <div style={{display:'inline-flex',gap:4,alignItems:'center'}}>
+        {btn(<><Icon name="chevLeft" size={13}/>Prev</>,cur===1,()=>onPage(cur-1))}
+        {pages[0]>1&&<span style={{color:th.inkFaint,fontSize:13,padding:'0 4px'}}>…</span>}
+        {pages.map(p=>btn(p,false,()=>onPage(p),p===cur))}
+        {pages[pages.length-1]<last&&<span style={{color:th.inkFaint,fontSize:13,padding:'0 4px'}}>…</span>}
+        {btn(<>Next<Icon name="chevron" size={13}/></>,cur===last,()=>onPage(cur+1))}
+      </div>
+    </div>
+  );
+}
+
+// ─── api hook ───────────────────────────────────────────────────
+function useApi(token){
+  const call=React.useCallback(async(method,path,body)=>{
+    const res=await fetch(API+path,{method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'Accept':'application/json'},body:body?JSON.stringify(body):undefined});
+    const json=await res.json();
+    if(!res.ok)throw new Error(json.message||'Request failed');
+    return json; // caller accesses .data and .meta
+  },[token]);
+  return{get:p=>call('GET',p),post:(p,b)=>call('POST',p,b),patch:(p,b)=>call('PATCH',p,b),del:p=>call('DELETE',p)};
+}
+
+// ─── login page ─────────────────────────────────────────────────
+function LoginPage({onLogin,th}){
+  const[email,setEmail]=React.useState('');
+  const[pass,setPass]=React.useState('');
+  const[err,setErr]=React.useState('');
+  const[loading,setLoading]=React.useState(false);
+  const submit=async e=>{
+    e.preventDefault();setErr('');setLoading(true);
+    try{
+      const res=await fetch(`${API}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({email,password:pass})});
+      const json=await res.json();
+      if(!res.ok)throw new Error(json.message||'Login failed');
+      if(json.data?.user?.role!=='admin'){setErr('Access denied — admin accounts only.');setLoading(false);return;}
+      onLogin(json.data.access_token,json.data.user);
+    }catch(e){setErr(e.message);setLoading(false);}
+  };
+  return(
+    <div style={{minHeight:'100vh',background:th.bg,display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+      <div style={{width:'100%',maxWidth:400}}>
+        <div style={{display:'flex',alignItems:'center',gap:14,justifyContent:'center',marginBottom:36}}>
+          <div style={{width:48,height:48,borderRadius:14,background:th.primary,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 8px 24px ${alpha(th.primary,.3)}`}}>
+            <Icon name="building" size={26}/>
+          </div>
+          <div>
+            <div style={{fontSize:22,fontWeight:700,color:th.ink,letterSpacing:-.4,lineHeight:1}}>FlatNest</div>
+            <div style={{fontSize:11.5,color:th.inkSoft,letterSpacing:.6,textTransform:'uppercase',fontWeight:600,marginTop:3}}>Admin Console</div>
+          </div>
+        </div>
+        <Card th={th}>
+          <div style={{fontSize:18,fontWeight:700,color:th.ink,marginBottom:6}}>Welcome back</div>
+          <div style={{fontSize:13.5,color:th.inkSoft,marginBottom:24}}>Sign in to manage the platform.</div>
+          <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:16}}>
+            <label style={{display:'flex',flexDirection:'column',gap:6}}>
+              <span style={{fontSize:12.5,fontWeight:600,color:th.inkMid}}>Email address</span>
+              <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="admin@flatnest.bd" required
+                style={{height:44,padding:'0 13px',borderRadius:10,border:`1.5px solid ${th.border}`,background:th.bgAlt,color:th.ink,fontSize:14}}/>
+            </label>
+            <label style={{display:'flex',flexDirection:'column',gap:6}}>
+              <span style={{fontSize:12.5,fontWeight:600,color:th.inkMid}}>Password</span>
+              <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="••••••••" required
+                style={{height:44,padding:'0 13px',borderRadius:10,border:`1.5px solid ${th.border}`,background:th.bgAlt,color:th.ink,fontSize:14}}/>
+            </label>
+            {err&&<div style={{fontSize:13,color:th.error,background:th.errorSoft,padding:'11px 13px',borderRadius:9,border:`1px solid ${alpha(th.error,.2)}`}}>{err}</div>}
+            <button type="submit" disabled={loading} style={{height:46,borderRadius:11,background:loading?alpha(th.primary,.7):th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:15,cursor:loading?'default':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,boxShadow:`0 4px 14px ${alpha(th.primary,.3)}`,marginTop:4}}>
+              {loading?<><Icon name="spin" size={16}/>Signing in…</>:<>Sign in</>}
+            </button>
+          </form>
+        </Card>
+        <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:10,marginTop:20}}>
+          <div style={{display:'flex',justifyContent:'center',gap:20}}>
+            <a href="/privacy-policy" target="_blank" rel="noopener noreferrer"
+              style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
+              onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+              Privacy Policy
+            </a>
+            <span style={{color:th.border,fontSize:12}}>•</span>
+            <a href="/terms-and-conditions" target="_blank" rel="noopener noreferrer"
+              style={{fontSize:12.5,color:th.inkSoft,textDecoration:'none',fontWeight:500,transition:'color .15s'}}
+              onMouseOver={e=>e.target.style.color=th.primary} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+              Terms & Conditions
+            </a>
+          </div>
+          <a href="/delete-account" target="_blank" rel="noopener noreferrer"
+            style={{fontSize:12,color:th.inkSoft,textDecoration:'underline',fontWeight:500,transition:'color .15s'}}
+            onMouseOver={e=>e.target.style.color=th.error} onMouseOut={e=>e.target.style.color=th.inkSoft}>
+            Delete your account
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── reject modal ───────────────────────────────────────────────
+function RejectModal({th,onConfirm,onClose,loading}){
+  const[reason,setReason]=React.useState('');
+  const presets=['Title or content violates guidelines','Stock or fake photos used','Price seems unrealistic','Duplicate of an existing listing','Missing required information'];
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
+      <div style={{animation:'fadeIn .2s ease'}}>
+        <Card th={th} style={{width:460,maxWidth:'100%'}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:18}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:th.ink}}>Reject listing</div>
+              <div style={{fontSize:13,color:th.inkSoft,marginTop:3}}>Choose a reason or write your own.</div>
+            </div>
+            <button onClick={onClose} style={{width:28,height:28,borderRadius:8,background:'transparent',border:`1px solid ${th.border}`,color:th.inkSoft,display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="x" size={13}/></button>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:14}}>
+            {presets.map(p=><button key={p} onClick={()=>setReason(p)} style={{padding:'9px 13px',borderRadius:9,background:reason===p?th.primarySoft:th.bgAlt,color:reason===p?th.primaryInk:th.inkMid,border:`1.5px solid ${reason===p?th.primary:th.border}`,textAlign:'left',fontSize:13,cursor:'pointer',fontWeight:reason===p?600:400,transition:'all .12s'}}>{p}</button>)}
+          </div>
+          <textarea value={reason} onChange={e=>setReason(e.target.value)} placeholder="Or type a custom reason…" rows={3}
+            style={{width:'100%',padding:'10px 13px',borderRadius:10,border:`1.5px solid ${th.border}`,background:th.bgAlt,color:th.ink,fontSize:13,resize:'vertical',lineHeight:1.5,marginBottom:16}}/>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>reason.trim()&&onConfirm(reason.trim())} disabled={!reason.trim()||loading} style={{flex:1,height:40,borderRadius:10,background:th.error,color:'#fff',border:'none',fontWeight:600,fontSize:13.5,cursor:reason.trim()&&!loading?'pointer':'default',opacity:reason.trim()&&!loading?1:.5,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+              {loading?<Icon name="spin" size={14}/>:<Icon name="x" size={14}/>}Reject listing
+            </button>
+            <button onClick={onClose} style={{flex:1,height:40,borderRadius:10,background:th.bgAlt,color:th.inkMid,border:`1.5px solid ${th.border}`,fontWeight:600,fontSize:13.5,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── field helpers ──────────────────────────────────────────────
+function Field({label,children,th}){
+  return<label style={{display:'flex',flexDirection:'column',gap:5}}>
+    <span style={{fontSize:12,fontWeight:600,color:th.inkMid,letterSpacing:.2}}>{label}</span>
+    {children}
+  </label>;
+}
+function Input({value,onChange,type='text',placeholder,th,required}){
+  return<input value={value??''} onChange={e=>onChange(e.target.value)} type={type} placeholder={placeholder} required={required}
+    style={{height:38,padding:'0 11px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.bgAlt,color:th.ink,fontSize:13.5}}/>;
+}
+function Textarea({value,onChange,rows=3,placeholder,th}){
+  return<textarea value={value??''} onChange={e=>onChange(e.target.value)} rows={rows} placeholder={placeholder}
+    style={{padding:'9px 11px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.bgAlt,color:th.ink,fontSize:13.5,resize:'vertical',lineHeight:1.5}}/>;
+}
+function Select({value,onChange,options,th}){
+  return<select value={value??''} onChange={e=>onChange(e.target.value)}
+    style={{height:38,padding:'0 11px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.bgAlt,color:th.ink,fontSize:13.5,appearance:'none',backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%238C93A3' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E")`,backgroundRepeat:'no-repeat',backgroundPosition:'right 10px center',paddingRight:28}}>
+    {options.map(o=><option key={o.value} value={o.value}>{o.label}</option>)}
+  </select>;
+}
+
+// ─── section divider ────────────────────────────────────────────
+function SectionLabel({label,th}){
+  return<div style={{gridColumn:'1/-1',fontSize:11.5,fontWeight:700,letterSpacing:.6,textTransform:'uppercase',color:th.primary,padding:'8px 0 0',borderTop:`1px solid ${th.border}`,marginTop:4}}>{label}</div>;
+}
+
+// ─── edit listing modal ─────────────────────────────────────────
+function EditListingModal({th,listing,onSave,onClose,loading,metaTypes,metaFacings}){
+  const[f,setF]=React.useState({
+    title:            listing.title||'',
+    area:             listing.area||'',
+    road_and_house:   listing.road_and_house||'',
+    price:            listing.price||0,
+    deposit:          listing.deposit||'',
+    beds:             listing.beds||0,
+    baths:            listing.baths||0,
+    size:             listing.size||'',
+    floor_no:         listing.floor_no||'',
+    listing_type_id:  listing.listing_type_id||'',
+    facing_id:        listing.facing_id||'',
+    available_from:   listing.available_from||'',
+    description:      listing.description||'',
+    road:             listing.road||'',
+    house_name:       listing.house_name||'',
+    block:            listing.block||'',
+    section:          listing.section||'',
+    coord_x:          listing.coord_x||'',
+    coord_y:          listing.coord_y||'',
+    owner_name:       listing.owner_name||'',
+    owner_phone:      listing.owner_phone||'',
+    owner_alt_phone:  listing.owner_alt_phone||'',
+    owner_email:      listing.owner_email||'',
+    preferred_contact:listing.preferred_contact||'',
+    status:           listing.status||'pending',
+    rejection_reason: listing.rejection_reason||'',
+  });
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const statusOpts=[{value:'draft',label:'Draft'},{value:'pending',label:'Pending Review'},{value:'active',label:'Active'},{value:'rented',label:'Rented'},{value:'rejected',label:'Rejected'}];
+  const typeOpts=[{value:'',label:'— Select type —'},...(metaTypes||[]).map(t=>({value:String(t.id),label:t.label}))];
+  const facingOpts=[{value:'',label:'— Select facing —'},...(metaFacings||[]).map(f=>({value:String(f.id),label:f.label}))];
+  const contactOpts=[{value:'',label:'— Not set —'},{value:'call',label:'Call'},{value:'whatsapp',label:'WhatsApp'},{value:'both',label:'Both'}];
+
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
+      <div style={{animation:'fadeIn .2s ease',width:'100%',maxWidth:680,maxHeight:'92vh',display:'flex',flexDirection:'column'}}>
+        <Card th={th} pad={0} style={{display:'flex',flexDirection:'column',overflow:'hidden'}}>
+          <div style={{padding:'18px 20px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${th.border}`,flexShrink:0}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:th.ink}}>Edit listing</div>
+              <div style={{fontSize:12,color:th.inkSoft,marginTop:2,fontFamily:'ui-monospace,monospace'}}>{listing.id}</div>
+            </div>
+            <button onClick={onClose} style={{width:30,height:30,borderRadius:8,background:'transparent',border:`1px solid ${th.border}`,color:th.inkSoft,display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="x" size={13}/></button>
+          </div>
+          <div style={{flex:1,overflowY:'auto',padding:20}}>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+              {/* Basic info */}
+              <div style={{gridColumn:'1/-1'}}><Field label="Title" th={th}><Input value={f.title} onChange={v=>set('title',v)} placeholder="Listing title" th={th} required/></Field></div>
+              <Field label="Status" th={th}><Select value={f.status} onChange={v=>set('status',v)} options={statusOpts} th={th}/></Field>
+              <Field label="Listing Type" th={th}><Select value={String(f.listing_type_id||'')} onChange={v=>set('listing_type_id',v?Number(v):null)} options={typeOpts} th={th}/></Field>
+
+              {/* Property details */}
+              <SectionLabel label="Property Details" th={th}/>
+              <Field label="Price (৳/month)" th={th}><Input value={f.price} onChange={v=>set('price',v)} type="number" placeholder="0" th={th}/></Field>
+              <Field label="Deposit (৳)" th={th}><Input value={f.deposit} onChange={v=>set('deposit',v)} type="number" placeholder="Optional" th={th}/></Field>
+              <Field label="Beds" th={th}><Input value={f.beds} onChange={v=>set('beds',v)} type="number" placeholder="0" th={th}/></Field>
+              <Field label="Baths" th={th}><Input value={f.baths} onChange={v=>set('baths',v)} type="number" placeholder="0" th={th}/></Field>
+              <Field label="Size (sq ft)" th={th}><Input value={f.size} onChange={v=>set('size',v)} type="number" placeholder="Optional" th={th}/></Field>
+              <Field label="Floor No" th={th}><Input value={f.floor_no} onChange={v=>set('floor_no',v)} type="number" placeholder="Optional" th={th}/></Field>
+              <Field label="Facing" th={th}><Select value={String(f.facing_id||'')} onChange={v=>set('facing_id',v?Number(v):null)} options={facingOpts} th={th}/></Field>
+              <Field label="Available From" th={th}><Input value={f.available_from} onChange={v=>set('available_from',v)} type="date" th={th}/></Field>
+              <div style={{gridColumn:'1/-1'}}><Field label="Description" th={th}><Textarea value={f.description} onChange={v=>set('description',v)} rows={3} placeholder="Listing description…" th={th}/></Field></div>
+
+              {/* Address */}
+              <SectionLabel label="Address" th={th}/>
+              <Field label="Area" th={th}><Input value={f.area} onChange={v=>set('area',v)} placeholder="e.g. Mirpur, Dhaka" th={th}/></Field>
+              <Field label="Road & House" th={th}><Input value={f.road_and_house} onChange={v=>set('road_and_house',v)} placeholder="Road/House" th={th}/></Field>
+              <Field label="Road" th={th}><Input value={f.road} onChange={v=>set('road',v)} placeholder="Road name" th={th}/></Field>
+              <Field label="House Name" th={th}><Input value={f.house_name} onChange={v=>set('house_name',v)} placeholder="House/building name" th={th}/></Field>
+              <Field label="Block" th={th}><Input value={f.block} onChange={v=>set('block',v)} placeholder="Block" th={th}/></Field>
+              <Field label="Section" th={th}><Input value={f.section} onChange={v=>set('section',v)} placeholder="Section" th={th}/></Field>
+              <Field label="Longitude (coord_x)" th={th}><Input value={f.coord_x} onChange={v=>set('coord_x',v)} type="number" placeholder="90.xxx" th={th}/></Field>
+              <Field label="Latitude (coord_y)" th={th}><Input value={f.coord_y} onChange={v=>set('coord_y',v)} type="number" placeholder="23.xxx" th={th}/></Field>
+
+              {/* Owner info */}
+              <SectionLabel label="Owner Contact" th={th}/>
+              <Field label="Owner Name" th={th}><Input value={f.owner_name} onChange={v=>set('owner_name',v)} placeholder="Name" th={th}/></Field>
+              <Field label="Owner Phone" th={th}><Input value={f.owner_phone} onChange={v=>set('owner_phone',v)} placeholder="01XXXXXXXXX" th={th}/></Field>
+              <Field label="Alt Phone" th={th}><Input value={f.owner_alt_phone} onChange={v=>set('owner_alt_phone',v)} placeholder="Optional" th={th}/></Field>
+              <Field label="Owner Email" th={th}><Input value={f.owner_email} onChange={v=>set('owner_email',v)} type="email" placeholder="email@example.com" th={th}/></Field>
+              <div style={{gridColumn:'1/-1'}}><Field label="Preferred Contact" th={th}><Select value={f.preferred_contact||''} onChange={v=>set('preferred_contact',v||null)} options={contactOpts} th={th}/></Field></div>
+
+              {/* Rejection */}
+              {f.status==='rejected'&&<div style={{gridColumn:'1/-1'}}><Field label="Rejection reason" th={th}><Textarea value={f.rejection_reason} onChange={v=>set('rejection_reason',v)} rows={2} placeholder="Reason shown to the owner…" th={th}/></Field></div>}
+            </div>
+          </div>
+          <div style={{padding:'14px 20px',borderTop:`1px solid ${th.border}`,display:'flex',gap:8,flexShrink:0}}>
+            <button onClick={()=>onSave(f)} disabled={loading} style={{flex:1,height:40,borderRadius:10,background:th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:13.5,cursor:loading?'default':'pointer',opacity:loading?.7:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,boxShadow:`0 4px 12px ${alpha(th.primary,.25)}`}}>
+              {loading?<Icon name="spin" size={14}/>:<Icon name="save" size={14}/>}Save changes
+            </button>
+            <button onClick={onClose} style={{flex:1,height:40,borderRadius:10,background:th.bgAlt,color:th.inkMid,border:`1.5px solid ${th.border}`,fontWeight:600,fontSize:13.5,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── edit user modal ────────────────────────────────────────────
+function EditUserModal({th,user,onSave,onClose,loading}){
+  const[f,setF]=React.useState({
+    name:        user.name||'',
+    email:       user.email||'',
+    phone:       user.phone==='—'?'':user.phone||'',
+    role:        user.role||'renter',
+    is_complete: user.verified||false,
+  });
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  const roleOpts=[{value:'renter',label:'Renter'},{value:'owner',label:'Owner'}];
+
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
+      <div style={{animation:'fadeIn .2s ease',width:'100%',maxWidth:480}}>
+        <Card th={th}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:th.ink}}>Edit user</div>
+              <div style={{fontSize:12,color:th.inkSoft,marginTop:2}}>{user.email}</div>
+            </div>
+            <button onClick={onClose} style={{width:30,height:30,borderRadius:8,background:'transparent',border:`1px solid ${th.border}`,color:th.inkSoft,display:'flex',alignItems:'center',justifyContent:'center'}}><Icon name="x" size={13}/></button>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            <Field label="Full name" th={th}><Input value={f.name} onChange={v=>set('name',v)} placeholder="Full name" th={th} required/></Field>
+            <Field label="Email address" th={th}><Input value={f.email} onChange={v=>set('email',v)} type="email" placeholder="Email" th={th} required/></Field>
+            <Field label="Phone number" th={th}><Input value={f.phone} onChange={v=>set('phone',v)} placeholder="e.g. 01XXXXXXXXX" th={th}/></Field>
+            <Field label="Role" th={th}><Select value={f.role} onChange={v=>set('role',v)} options={roleOpts} th={th}/></Field>
+            <label style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.bgAlt,cursor:'pointer'}}>
+              <input type="checkbox" checked={f.is_complete} onChange={e=>set('is_complete',e.target.checked)} style={{width:16,height:16,accentColor:th.primary}}/>
+              <div>
+                <div style={{fontSize:13.5,fontWeight:500,color:th.ink}}>Profile complete</div>
+                <div style={{fontSize:11.5,color:th.inkSoft}}>User has filled in all required details</div>
+              </div>
+            </label>
+          </div>
+          <div style={{display:'flex',gap:8,marginTop:20}}>
+            <button onClick={()=>onSave(f)} disabled={loading} style={{flex:1,height:40,borderRadius:10,background:th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:13.5,cursor:loading?'default':'pointer',opacity:loading?.7:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,boxShadow:`0 4px 12px ${alpha(th.primary,.25)}`}}>
+              {loading?<Icon name="spin" size={14}/>:<Icon name="save" size={14}/>}Save changes
+            </button>
+            <button onClick={onClose} style={{flex:1,height:40,borderRadius:10,background:th.bgAlt,color:th.inkMid,border:`1.5px solid ${th.border}`,fontWeight:600,fontSize:13.5,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── user sessions modal ────────────────────────────────────────
+function UserSessionsModal({th,user,api,onClose}){
+  const[sessions,setSessions]=React.useState([]);
+  const[loading,setLoading]=React.useState(true);
+  React.useEffect(()=>{
+    api.get(`/admin/users/${user.id}/sessions`)
+      .then(r=>{setSessions(r.data||[]);setLoading(false);})
+      .catch(()=>setLoading(false));
+  },[user.id]);
+
+  const deviceIcon=type=>{
+    if(type==='ios'||type==='android')return(
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+    );
+    return(
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    );
+  };
+
+  const fmtDate=d=>d?new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
+      <div style={{animation:'fadeIn .2s ease',width:'100%',maxWidth:560,maxHeight:'80vh',display:'flex',flexDirection:'column'}}>
+        <Card th={th} style={{display:'flex',flexDirection:'column',overflow:'hidden',maxHeight:'80vh'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexShrink:0}}>
+            <div>
+              <div style={{fontSize:16,fontWeight:700,color:th.ink}}>Device sessions</div>
+              <div style={{fontSize:12,color:th.inkSoft,marginTop:2}}>{user.name} · {user.email}</div>
+            </div>
+            <button onClick={onClose} style={{width:30,height:30,borderRadius:8,background:'transparent',border:`1px solid ${th.border}`,color:th.inkSoft,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="x" size={13}/></button>
+          </div>
+          <div style={{overflowY:'auto',flex:1}}>
+            {loading?(
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>{[1,2,3].map(i=><Skeleton key={i} h={64}/>)}</div>
+            ):sessions.length===0?(
+              <div style={{textAlign:'center',padding:'40px 0',color:th.inkSoft,fontSize:13}}>No sessions recorded for this user.</div>
+            ):(
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                {sessions.map(s=>(
+                  <div key={s.id} style={{padding:'12px 14px',borderRadius:10,border:`1px solid ${s.is_active?alpha(th.success,.4):th.borderSoft}`,background:s.is_active?alpha(th.success,.04):th.bgAlt,display:'flex',alignItems:'center',gap:14}}>
+                    <div style={{width:36,height:36,borderRadius:10,background:s.is_active?alpha(th.success,.12):th.border,display:'flex',alignItems:'center',justifyContent:'center',color:s.is_active?th.success:th.inkSoft,flexShrink:0}}>
+                      {deviceIcon(s.device_type)}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:13.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.device_model}</span>
+                        {s.is_active&&<span style={{fontSize:10.5,fontWeight:600,color:th.success,background:alpha(th.success,.12),padding:'2px 8px',borderRadius:20,flexShrink:0}}>Active</span>}
+                      </div>
+                      <div style={{fontSize:11.5,color:th.inkSoft,marginTop:3,display:'flex',gap:12,flexWrap:'wrap'}}>
+                        <span style={{display:'flex',alignItems:'center',gap:3}}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          Login: {fmtDate(s.logged_in_at)}
+                        </span>
+                        {s.logged_out_at&&(
+                          <span style={{display:'flex',alignItems:'center',gap:3}}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            Logout: {fmtDate(s.logged_out_at)}
+                          </span>
+                        )}
+                        {s.ip_address&&<span>IP: {s.ip_address}</span>}
+                        {s.device_type&&<span style={{textTransform:'capitalize'}}>{s.device_type}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{marginTop:16,flexShrink:0}}>
+            <button onClick={onClose} style={{width:'100%',height:38,borderRadius:10,background:th.bgAlt,color:th.inkMid,border:`1.5px solid ${th.border}`,fontWeight:600,fontSize:13,cursor:'pointer'}}>Close</button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── sidebar ────────────────────────────────────────────────────
+function Sidebar({th,page,setPage,counts,user}){
+  const nav=[
+    {id:'dashboard', label:'Dashboard', icon:'home'},
+    {id:'approvals', label:'Approvals',  icon:'approve', badge:counts.pending},
+    {id:'listings',  label:'Listings',   icon:'listing',  badge:counts.listings},
+    {id:'users',     label:'Users',      icon:'users',    badge:counts.users},
+    {id:'sessions',  label:'Sessions',   icon:'device'},
+    {id:'analytics', label:'Analytics',  icon:'chart'},
+  ];
+  return(
+    <aside style={{width:240,flexShrink:0,height:'100vh',position:'sticky',top:0,background:th.bgAlt,borderRight:`1px solid ${th.border}`,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {/* brand */}
+      <div style={{padding:'22px 18px 16px',borderBottom:`1px solid ${th.border}`}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <div style={{width:34,height:34,borderRadius:10,background:th.primary,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:`0 4px 12px ${alpha(th.primary,.3)}`,flexShrink:0}}>
+            <Icon name="building" size={18}/>
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:15,letterSpacing:-.3,color:th.ink,lineHeight:1}}>FlatNest</div>
+            <div style={{fontSize:10,color:th.inkSoft,letterSpacing:.6,textTransform:'uppercase',fontWeight:600,marginTop:2}}>Admin Console</div>
+          </div>
+        </div>
+      </div>
+      {/* nav */}
+      <nav style={{flex:1,overflowY:'auto',padding:'12px 10px',display:'flex',flexDirection:'column',gap:2}}>
+        <div style={{fontSize:10,color:th.inkFaint,fontWeight:700,letterSpacing:.8,textTransform:'uppercase',padding:'6px 8px 8px'}}>Navigation</div>
+        {nav.map(it=>{
+          const active=page===it.id;
+          return(
+            <button key={it.id} onClick={()=>setPage(it.id)} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',borderRadius:10,cursor:'pointer',background:active?th.surface:'transparent',color:active?th.ink:th.inkMid,border:active?`1px solid ${th.border}`:'1px solid transparent',fontSize:13.5,fontWeight:active?600:450,fontFamily:FN_FONT,textAlign:'left',width:'100%',boxShadow:active?th.shadow:'none',transition:'all .15s'}}>
+              <span style={{color:active?th.primary:th.inkSoft,display:'flex',flexShrink:0}}><Icon name={it.icon} size={17}/></span>
+              <span style={{flex:1}}>{it.label}</span>
+              {it.badge>0&&<span style={{background:active?th.primary:th.border,color:active?'#fff':th.inkMid,fontSize:10.5,fontWeight:700,padding:'2px 7px',borderRadius:999,minWidth:22,textAlign:'center',fontVariantNumeric:'tabular-nums'}}>{it.badge}</span>}
+            </button>
+          );
+        })}
+      </nav>
+      {/* user card */}
+      <div style={{padding:'12px 10px',borderTop:`1px solid ${th.border}`}}>
+        <div style={{padding:'10px 12px',borderRadius:12,background:th.surface,border:`1px solid ${th.border}`,display:'flex',alignItems:'center',gap:10}}>
+          <Avt name={user?.name||'Admin'} size={34}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:13,fontWeight:600,color:th.ink,lineHeight:1.3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.name||'Admin'}</div>
+            <div style={{fontSize:11,color:th.inkSoft,marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{user?.email||'admin@flatnest.bd'}</div>
+          </div>
+          <div style={{width:8,height:8,borderRadius:4,background:th.success,flexShrink:0}} title="Online"/>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ─── top bar ────────────────────────────────────────────────────
+function TopBar({th,title,crumb,dark,toggleDark,onLogout,action}){
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:14,padding:'16px 28px',borderBottom:`1px solid ${th.border}`,background:th.bg,position:'sticky',top:0,zIndex:10}}>
+      <div>
+        <div style={{fontSize:11,color:th.inkSoft,fontWeight:500,letterSpacing:.4,marginBottom:3,textTransform:'uppercase'}}>{crumb}</div>
+        <div style={{fontSize:22,fontWeight:700,color:th.ink,letterSpacing:-.5,lineHeight:1}}>{title}</div>
+      </div>
+      <div style={{flex:1}}/>
+      {action}
+      <button onClick={toggleDark} title={dark?'Light mode':'Dark mode'} style={{width:38,height:38,borderRadius:10,background:th.surface,border:`1px solid ${th.border}`,color:th.inkMid,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>
+        <Icon name={dark?'sun':'moon'} size={17}/>
+      </button>
+      <button onClick={onLogout} title="Sign out" style={{height:38,padding:'0 14px',borderRadius:10,background:th.surface,border:`1px solid ${th.border}`,color:th.inkMid,display:'flex',alignItems:'center',justifyContent:'center',gap:7,cursor:'pointer',fontSize:13,fontWeight:500}}>
+        <Icon name="logout" size={16}/>Sign out
+      </button>
+    </div>
+  );
+}
+
+// ─── search bar ─────────────────────────────────────────────────
+function SearchBar({value,onChange,placeholder,th}){
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:8,height:38,padding:'0 13px',borderRadius:10,background:th.surface,border:`1px solid ${th.border}`,width:260,color:th.inkSoft,boxShadow:'none'}}>
+      <Icon name="search" size={15}/>
+      <input value={value||''} onChange={e=>onChange(e.target.value)} placeholder={placeholder||'Search…'} style={{flex:1,border:'none',background:'transparent',color:th.ink,fontSize:13}}/>
+    </div>
+  );
+}
+
+// ─── stat card ──────────────────────────────────────────────────
+function StatCard({label,value,delta,deltaUp,trend,color,th,loading}){
+  return(
+    <Card th={th}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:600,color:th.inkSoft}}>{label}</div>
+        {delta!=null&&<span style={{display:'inline-flex',alignItems:'center',gap:3,fontSize:11,fontWeight:700,color:deltaUp?th.success:th.error,background:deltaUp?th.successSoft:th.errorSoft,padding:'2px 7px',borderRadius:999}}>
+          <Icon name={deltaUp?'up':'dn'} size={10}/>{delta}
+        </span>}
+      </div>
+      {loading?<Skeleton h={36} r={6}/>:<div style={{fontSize:32,fontWeight:700,color:th.ink,letterSpacing:-.8,lineHeight:1}}>{value}</div>}
+      <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between',marginTop:14}}>
+        <div style={{fontSize:11.5,color:th.inkFaint,marginTop:2}}>Last 14 days</div>
+        {trend&&<Sparkline data={trend} color={color} width={84} height={30}/>}
+      </div>
+    </Card>
+  );
+}
+
+// ─── chart palette ───────────────────────────────────────────────
+const CHART_COLORS=['#46A7AE','#FF8585','#F2C14E','#8B7CF6','#34C759','#FF9F0F'];
+function typeDataWithColors(byType){
+  return (byType||[]).map((d,i)=>({...d,color:CHART_COLORS[i%CHART_COLORS.length]}));
+}
+// Build status donut data from by_status map
+function statusDonut(byStatus,th){
+  const map={active:th.success,pending:th.warning,rejected:th.error,rented:th.inkSoft,draft:th.inkFaint};
+  return Object.entries(byStatus||{}).filter(([,n])=>n>0).map(([k,n])=>({type:k,count:n,color:map[k]||'#aaa'}));
+}
+
+// ─── day-label helper ────────────────────────────────────────────
+function dayLabels(n=14){
+  return Array.from({length:n},(_,i)=>{
+    const d=new Date();d.setDate(d.getDate()-(n-1-i));
+    return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  });
+}
+
+// ─── dashboard page ─────────────────────────────────────────────
+function PageDashboard({th,setPage,api}){
+  const toast=useToast();
+  const[data,setData]=React.useState(null);
+  const[loading,setLoading]=React.useState(true);
+  React.useEffect(()=>{
+    api.get('/admin/dashboard').then(r=>{setData(r.data);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[]);
+
+  const s=data?.stats||{};
+  const listingsTrend = data?.listings_trend||[];
+  const usersTrend    = data?.users_trend||[];
+  const byType        = typeDataWithColors(data?.by_type);
+  const byStatus      = statusDonut(data?.by_status,th);
+  const recent        = data?.recent_listings||[];
+  const labels        = dayLabels(14);
+
+  const stats=[
+    {label:'Active listings',  value:s.active_listings??'—', trend:listingsTrend, color:th.primary},
+    {label:'Total users',      value:s.total_users??'—',      trend:usersTrend,    color:th.secondary},
+    {label:'Pending approval', value:s.pending_approval??'—', trend:null,          color:th.warning},
+    {label:'Total listings',   value:s.total_listings??'—',   trend:listingsTrend, color:th.primary},
+  ];
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',gap:20,padding:28}}>
+      {/* stat cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
+        {stats.map(s=><StatCard key={s.label} {...s} th={th} loading={loading}/>)}
+      </div>
+
+      {/* trend + type */}
+      <div style={{display:'grid',gridTemplateColumns:'2fr 1fr',gap:14}}>
+        <Card th={th}>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>New listings — last 14 days</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Daily count of listings submitted to the platform</div>
+          </div>
+          {loading?<Skeleton h={140}/>:<>
+            <Bars data={listingsTrend.length?listingsTrend:[0]} color={th.primary} height={140}/>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:th.inkSoft}}>
+              <span>{labels[0]}</span><span>{labels[6]}</span><span>{labels[13]}</span>
+            </div>
+          </>}
+        </Card>
+        <Card th={th}>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>By listing type</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>All listings grouped by type</div>
+          </div>
+          {loading?<Skeleton h={130}/>:
+            byType.length===0
+              ?<div style={{textAlign:'center',padding:'32px 0',color:th.inkSoft,fontSize:13}}>No data yet</div>
+              :<div style={{display:'flex',alignItems:'center',gap:16}}>
+                <Donut th={th} data={byType} size={118} thickness={16}/>
+                <div style={{flex:1,display:'flex',flexDirection:'column',gap:7}}>
+                  {byType.map(d=><div key={d.type} style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{width:9,height:9,borderRadius:3,background:d.color,flexShrink:0}}/>
+                    <span style={{fontSize:11.5,color:th.inkMid,flex:1,lineHeight:1.3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.type}</span>
+                    <span style={{fontSize:12.5,fontWeight:700,color:th.ink}}>{d.count}</span>
+                  </div>)}
+                </div>
+              </div>
+          }
+        </Card>
+      </div>
+
+      {/* status distribution */}
+      {!loading&&byStatus.length>0&&(
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+          <Card th={th}>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:15,fontWeight:700,color:th.ink}}>Listings by status</div>
+              <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Current status breakdown</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:20}}>
+              <Donut th={th} data={byStatus} size={130} thickness={18}/>
+              <div style={{flex:1,display:'flex',flexDirection:'column',gap:9}}>
+                {byStatus.map(d=>(
+                  <div key={d.type} style={{display:'flex',alignItems:'center',gap:9}}>
+                    <span style={{width:10,height:10,borderRadius:3,background:d.color,flexShrink:0}}/>
+                    <span style={{fontSize:12.5,color:th.inkMid,flex:1,textTransform:'capitalize'}}>{d.type}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:th.ink,fontVariantNumeric:'tabular-nums'}}>{d.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+          <Card th={th}>
+            <div style={{marginBottom:16}}>
+              <div style={{fontSize:15,fontWeight:700,color:th.ink}}>New users — last 14 days</div>
+              <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Daily user registrations</div>
+            </div>
+            <Bars data={usersTrend.length?usersTrend:[0]} color={th.secondary} height={120}/>
+            <div style={{display:'flex',justifyContent:'space-between',marginTop:10,fontSize:11,color:th.inkSoft}}>
+              <span>{labels[0]}</span><span>{labels[6]}</span><span>{labels[13]}</span>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* recent listings */}
+      <Card th={th} pad={0}>
+        <div style={{padding:'18px 20px 12px',display:'flex',alignItems:'center',gap:12}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>Recent listings</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Latest submissions across all statuses</div>
+          </div>
+          <button onClick={()=>setPage('listings')} style={{background:'transparent',border:'none',cursor:'pointer',color:th.primary,fontSize:13,fontWeight:600,display:'inline-flex',alignItems:'center',gap:4,padding:'6px 10px',borderRadius:8}}>
+            View all <Icon name="chevron" size={13}/>
+          </button>
+        </div>
+        {loading?[1,2,3].map(i=><div key={i} style={{padding:'14px 20px',borderTop:`1px solid ${th.border}`,display:'flex',gap:12}}><Skeleton h={16} w="60%"/><Skeleton h={16} w="80px"/></div>):
+          recent.map(l=>(
+            <div key={l.id} style={{display:'grid',gridTemplateColumns:'1fr auto',gap:14,padding:'13px 20px',alignItems:'center',borderTop:`1px solid ${th.border}`}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:13.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title}</div>
+                <div style={{fontSize:12,color:th.inkSoft,marginTop:2,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                  <span>{l.owner}</span><span>·</span>
+                  <span style={{display:'inline-flex',alignItems:'center',gap:3}}><Icon name="pin" size={10}/>{l.area}</span>
+                  <span>·</span><span style={{fontVariantNumeric:'tabular-nums'}}>{bdt(l.price)}/mo</span>
+                  <span>·</span><span>{l.created}</span>
+                </div>
+              </div>
+              <StatusBadge status={l.status} th={th}/>
+            </div>
+          ))
+        }
+        {!loading&&recent.length===0&&<div style={{padding:'32px 20px',textAlign:'center',color:th.inkSoft,fontSize:13}}>No listings yet.</div>}
+      </Card>
+    </div>
+  );
+}
+
+// ─── listings page ──────────────────────────────────────────────
+function PageListings({th,api,onViewDetail,metaTypes,metaFacings}){
+  const toast=useToast();
+  const[filter,setFilter]=React.useState('all');
+  const[search,setSearch]=React.useState('');
+  const[rows,setRows]=React.useState([]);
+  const[meta,setMeta]=React.useState(null);
+  const[page,setPage]=React.useState(1);
+  const[loading,setLoading]=React.useState(true);
+  const[rejectTarget,setRejectTarget]=React.useState(null);
+  const[editTarget,setEditTarget]=React.useState(null);
+  const[acting,setActing]=React.useState(null);
+
+  const load=React.useCallback((pg=page)=>{
+    setLoading(true);
+    const p=new URLSearchParams({page:pg});
+    if(filter!=='all')p.set('status',filter);
+    if(search)p.set('search',search);
+    api.get(`/admin/listings?${p}`).then(r=>{setRows(r.data||[]);setMeta(r.meta||null);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[filter,search,page]);
+
+  React.useEffect(()=>{setPage(1);},[filter,search]);
+  React.useEffect(()=>{const t=setTimeout(()=>load(page),300);return()=>clearTimeout(t);},[filter,search,page]);
+
+  const approve=async id=>{
+    setActing(id+'a');
+    try{await api.post(`/admin/listings/${id}/approve`);toast('Listing approved and is now live!','success');load(page);}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+  const reject=async(id,reason)=>{
+    setActing(id+'r');
+    try{await api.post(`/admin/listings/${id}/reject`,{reason});toast('Listing rejected.','info');setRejectTarget(null);load(page);}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+  const save=async(id,fields)=>{
+    setActing(id+'e');
+    try{
+      await api.patch(`/admin/listings/${id}`,{
+        title:            fields.title,
+        area:             fields.area,
+        road_and_house:   fields.road_and_house||null,
+        price:            Number(fields.price)||0,
+        deposit:          fields.deposit!==''?Number(fields.deposit):null,
+        beds:             Number(fields.beds)||0,
+        baths:            Number(fields.baths)||0,
+        size:             fields.size!==''?Number(fields.size):null,
+        floor_no:         fields.floor_no!==''?Number(fields.floor_no):null,
+        listing_type_id:  fields.listing_type_id||null,
+        facing_id:        fields.facing_id||null,
+        available_from:   fields.available_from||null,
+        description:      fields.description||null,
+        road:             fields.road||null,
+        house_name:       fields.house_name||null,
+        block:            fields.block||null,
+        section:          fields.section||null,
+        coord_x:          fields.coord_x!==''?Number(fields.coord_x):null,
+        coord_y:          fields.coord_y!==''?Number(fields.coord_y):null,
+        owner_name:       fields.owner_name||null,
+        owner_phone:      fields.owner_phone||null,
+        owner_alt_phone:  fields.owner_alt_phone||null,
+        owner_email:      fields.owner_email||null,
+        preferred_contact:fields.preferred_contact||null,
+        status:           fields.status,
+        rejection_reason: fields.status==='rejected'?(fields.rejection_reason||null):null,
+      });
+      toast('Listing updated.','success');
+      setEditTarget(null);
+      load(page);
+    }catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+  const del=async id=>{
+    if(!confirm('Delete this listing permanently? This cannot be undone.'))return;
+    try{await api.del(`/admin/listings/${id}`);toast('Listing deleted.','info');load(page);}
+    catch(e){toast(e.message,'error');}
+  };
+
+  const tabs=[
+    {value:'all',     label:'All',      count:meta?.total},
+    {value:'active',  label:'Active'},
+    {value:'pending', label:'Pending'},
+    {value:'rejected',label:'Rejected'},
+    {value:'rented',  label:'Rented'},
+  ];
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {rejectTarget&&<RejectModal th={th} loading={acting===rejectTarget+'r'} onConfirm={r=>reject(rejectTarget,r)} onClose={()=>setRejectTarget(null)}/>}
+      {editTarget&&<EditListingModal th={th} listing={editTarget} loading={acting===editTarget.id+'e'} onSave={f=>save(editTarget.id,f)} onClose={()=>setEditTarget(null)} metaTypes={metaTypes} metaFacings={metaFacings}/>}
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <Tabs th={th} value={filter} onChange={v=>{setFilter(v);setPage(1);}} options={tabs}/>
+        <div style={{flex:1}}/>
+        <SearchBar th={th} value={search} onChange={v=>{setSearch(v);setPage(1);}} placeholder="Search listings…"/>
+        <IBtn th={th} icon="refresh" title="Refresh" onClick={()=>load(page)}/>
+      </div>
+      <Card th={th} pad={0}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontFamily:FN_FONT}}>
+            <thead>
+              <tr style={{background:th.bgAlt}}>
+                {['#','Listing','Owner','Area','Type','Price','Beds','Status','Views','Actions'].map((h,i)=>(
+                  <th key={i} style={{textAlign:(i>=4&&i<=6||i===8)?'right':'left',fontSize:10.5,color:th.inkSoft,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',padding:'12px 16px',borderBottom:`1px solid ${th.border}`,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading?[1,2,3,4,5].map(i=>(
+                <tr key={i}><td colSpan={10} style={{padding:'12px 16px',borderBottom:`1px solid ${th.borderSoft}`}}><Skeleton h={20}/></td></tr>
+              )):rows.map(l=>(
+                <tr key={l.id} style={{borderBottom:`1px solid ${th.borderSoft}`,transition:'background .12s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=th.bgAlt}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{padding:'11px 16px',fontSize:11,color:th.inkFaint,fontFamily:'ui-monospace,monospace',whiteSpace:'nowrap'}}>{(l.id||'').slice(0,8)}</td>
+                  <td style={{padding:'10px 16px',maxWidth:240}}>
+                    <div style={{fontSize:13.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title}</div>
+                    <div style={{fontSize:11.5,color:th.inkSoft,marginTop:2}}>{l.created}</div>
+                    {l.status==='rejected'&&l.rejection_reason&&(
+                      <div style={{fontSize:11.5,color:th.error,marginTop:4,display:'flex',alignItems:'flex-start',gap:4,lineHeight:1.4}}>
+                        <Icon name="x" size={11} style={{marginTop:1,flexShrink:0}}/>
+                        <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:180}}>{l.rejection_reason}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td style={{padding:'11px 16px',fontSize:13,color:th.inkMid,whiteSpace:'nowrap'}}>{l.owner||'—'}</td>
+                  <td style={{padding:'11px 16px'}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:4,fontSize:12.5,color:th.inkMid,whiteSpace:'nowrap'}}><Icon name="pin" size={11}/>{l.area}</span>
+                  </td>
+                  <td style={{padding:'11px 16px',textAlign:'right'}}>
+                    <span style={{padding:'2px 8px',borderRadius:999,background:th.primarySoft,color:th.primaryInk,fontSize:11.5,fontWeight:600,whiteSpace:'nowrap'}}>{l.type||'—'}</span>
+                  </td>
+                  <td style={{padding:'11px 16px',textAlign:'right',fontSize:13.5,fontWeight:700,color:th.ink,fontVariantNumeric:'tabular-nums',whiteSpace:'nowrap'}}>{bdt(l.price)}</td>
+                  <td style={{padding:'11px 16px',textAlign:'right',fontSize:13,color:th.inkMid}}>{l.beds}</td>
+                  <td style={{padding:'11px 16px'}}><StatusBadge status={l.status} th={th}/></td>
+                  <td style={{padding:'11px 16px',textAlign:'right',fontSize:13,color:th.inkMid,fontVariantNumeric:'tabular-nums'}}>{l.views}</td>
+                  <td style={{padding:'8px 16px',textAlign:'right'}}>
+                    <div style={{display:'inline-flex',gap:5}}>
+                      {(l.status==='pending'||l.status==='rejected')&&(
+                        <IBtn th={th} icon="check" tone="success" title="Approve" loading={acting===l.id+'a'} onClick={()=>approve(l.id)}/>
+                      )}
+                      {(l.status==='pending'||l.status==='active')&&(
+                        <IBtn th={th} icon="x" tone="danger" title="Reject" loading={acting===l.id+'r'} onClick={()=>setRejectTarget(l.id)}/>
+                      )}
+                      <IBtn th={th} icon="eye" title="View details" onClick={()=>onViewDetail&&onViewDetail(l.id)}/>
+                      <IBtn th={th} icon="edit" tone="primary" title="Edit" loading={acting===l.id+'e'} onClick={()=>setEditTarget(l)}/>
+                      <IBtn th={th} icon="trash" tone="danger" title="Delete" onClick={()=>del(l.id)}/>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading&&rows.length===0&&(
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <div style={{width:48,height:48,borderRadius:14,background:th.bgAlt,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Icon name="listing" size={24} style={{color:th.inkFaint}}/></div>
+            <div style={{fontSize:14,fontWeight:600,color:th.ink}}>No listings found</div>
+            <div style={{fontSize:13,color:th.inkSoft,marginTop:4}}>Try adjusting the filters or search term.</div>
+          </div>
+        )}
+        <Pagination meta={meta} onPage={p=>{setPage(p);load(p);}} th={th}/>
+      </Card>
+    </div>
+  );
+}
+
+// ─── listing detail page ────────────────────────────────────────
+function PageListingDetail({th,api,listingId,onBack,metaTypes,metaFacings}){
+  const toast=useToast();
+  const[data,setData]=React.useState(null);
+  const[loading,setLoading]=React.useState(true);
+  const[editTarget,setEditTarget]=React.useState(null);
+  const[acting,setActing]=React.useState(null);
+
+  const load=()=>{
+    setLoading(true);
+    api.get(`/admin/listings/${listingId}`).then(r=>{setData(r.data);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  };
+  React.useEffect(()=>{load();},[listingId]);
+
+  const save=async(fields)=>{
+    setActing('e');
+    try{
+      await api.patch(`/admin/listings/${listingId}`,{
+        title:fields.title,area:fields.area,road_and_house:fields.road_and_house||null,
+        price:Number(fields.price)||0,deposit:fields.deposit!==''?Number(fields.deposit):null,
+        beds:Number(fields.beds)||0,baths:Number(fields.baths)||0,
+        size:fields.size!==''?Number(fields.size):null,floor_no:fields.floor_no!==''?Number(fields.floor_no):null,
+        listing_type_id:fields.listing_type_id||null,facing_id:fields.facing_id||null,
+        available_from:fields.available_from||null,description:fields.description||null,
+        road:fields.road||null,house_name:fields.house_name||null,block:fields.block||null,section:fields.section||null,
+        coord_x:fields.coord_x!==''?Number(fields.coord_x):null,coord_y:fields.coord_y!==''?Number(fields.coord_y):null,
+        owner_name:fields.owner_name||null,owner_phone:fields.owner_phone||null,
+        owner_alt_phone:fields.owner_alt_phone||null,owner_email:fields.owner_email||null,
+        preferred_contact:fields.preferred_contact||null,
+        status:fields.status,rejection_reason:fields.status==='rejected'?(fields.rejection_reason||null):null,
+      });
+      toast('Listing updated.','success');setEditTarget(null);load();
+    }catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  const approve=async()=>{
+    setActing('a');
+    try{await api.post(`/admin/listings/${listingId}/approve`);toast('Listing approved!','success');load();}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  function InfoRow({icon,label,value,th:t}){
+    if(!value&&value!==0)return null;
+    return<div style={{display:'flex',alignItems:'flex-start',gap:10,padding:'8px 0'}}>
+      <span style={{color:t.inkSoft,flexShrink:0,marginTop:1}}><Icon name={icon||'info'} size={14}/></span>
+      <div><div style={{fontSize:11,color:t.inkSoft,fontWeight:600,letterSpacing:.3,textTransform:'uppercase',marginBottom:2}}>{label}</div>
+      <div style={{fontSize:13.5,color:t.ink,fontWeight:500}}>{value}</div></div>
+    </div>;
+  }
+
+  if(loading)return<div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+    <Skeleton h={28} w={200}/><Skeleton h={200}/><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}><Skeleton h={180}/><Skeleton h={180}/></div>
+  </div>;
+
+  if(!data)return<div style={{padding:28,textAlign:'center',color:th.inkSoft}}>Listing not found.</div>;
+
+  const d=data;
+  const photos=d.photos||[];
+  const amenities=d.amenities||[];
+  const loc=[d.division?.name,d.district?.name,d.upazila?.name,d.union?.name].filter(Boolean).join(' → ');
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {editTarget&&<EditListingModal th={th} listing={editTarget} loading={acting==='e'} onSave={save} onClose={()=>setEditTarget(null)} metaTypes={metaTypes} metaFacings={metaFacings}/>}
+
+      {/* Back + title bar */}
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 14px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.surface,color:th.inkMid,cursor:'pointer',fontSize:13,fontWeight:500}}><Icon name="chevLeft" size={14}/>Back to listings</button>
+        <div style={{flex:1}}/>
+        {(d.status==='pending'||d.status==='rejected')&&<button onClick={approve} disabled={acting==='a'} style={{height:36,padding:'0 18px',borderRadius:9,border:'none',background:th.success,color:'#fff',fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:6,cursor:acting==='a'?'default':'pointer',opacity:acting==='a'?.7:1,boxShadow:`0 3px 10px ${alpha(th.success,.3)}`}}>{acting==='a'?<Icon name="spin" size={14}/>:<Icon name="check" size={14}/>}Approve</button>}
+        <button onClick={()=>setEditTarget(d)} style={{height:36,padding:'0 18px',borderRadius:9,border:`1.5px solid ${th.primary}`,background:th.primarySoft,color:th.primaryInk,fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}><Icon name="edit" size={14}/>Edit</button>
+      </div>
+
+      {/* Header card */}
+      <Card th={th}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:16}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:6}}>
+              <StatusBadge status={d.status} th={th}/>
+              {d.listing_type&&<span style={{padding:'2px 8px',borderRadius:999,background:th.primarySoft,color:th.primaryInk,fontSize:11.5,fontWeight:600}}>{d.listing_type.label}</span>}
+            </div>
+            <div style={{fontSize:22,fontWeight:700,color:th.ink,letterSpacing:-.4,lineHeight:1.3}}>{d.title}</div>
+            <div style={{fontSize:12.5,color:th.inkSoft,marginTop:6,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              {d.area&&<span style={{display:'inline-flex',alignItems:'center',gap:3}}><Icon name="pin" size={11}/>{d.area}</span>}
+              <span>·</span><span style={{fontVariantNumeric:'tabular-nums'}}>{bdt(d.price)}/mo</span>
+              {d.deposit&&<><span>·</span><span>Deposit: {bdt(d.deposit)}</span></>}
+              <span>·</span><span>{d.views||0} views</span>
+            </div>
+            <div style={{fontSize:11,color:th.inkFaint,fontFamily:'ui-monospace,monospace',marginTop:6}}>ID: {d.id}</div>
+          </div>
+          <div style={{textAlign:'right',flexShrink:0}}>
+            <div style={{fontSize:28,fontWeight:700,color:th.ink,letterSpacing:-.4,fontVariantNumeric:'tabular-nums'}}>{bdt(d.price)}</div>
+            <div style={{fontSize:11.5,color:th.inkSoft,marginTop:2}}>per month</div>
+          </div>
+        </div>
+        {d.status==='rejected'&&d.rejection_reason&&<div style={{marginTop:14,padding:'10px 14px',borderRadius:10,background:th.errorSoft,border:`1px solid ${alpha(th.error,.2)}`,display:'flex',alignItems:'flex-start',gap:8}}>
+          <Icon name="warn" size={14} style={{color:th.error,marginTop:2,flexShrink:0}}/>
+          <div><div style={{fontSize:11,fontWeight:700,color:th.error,letterSpacing:.3,textTransform:'uppercase',marginBottom:2}}>Rejection Reason</div>
+          <div style={{fontSize:13,color:th.ink,lineHeight:1.5}}>{d.rejection_reason}</div></div>
+        </div>}
+      </Card>
+
+      {/* Photos */}
+      {photos.length>0&&<Card th={th}>
+        <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:14,display:'flex',alignItems:'center',gap:6}}><Icon name="eye" size={15}/>Photos ({photos.length})</div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:10}}>
+          {photos.map((p,i)=><div key={p.id||i} style={{position:'relative',paddingTop:'75%',borderRadius:12,overflow:'hidden',background:th.bgAlt}}>
+            <img src={p.url} alt={`Photo ${i+1}`} style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}}/>
+            <div style={{position:'absolute',bottom:6,right:6,background:'rgba(0,0,0,.6)',color:'#fff',fontSize:10,fontWeight:600,padding:'2px 6px',borderRadius:4}}>{i+1}/{photos.length}</div>
+          </div>)}
+        </div>
+      </Card>}
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        {/* Property details */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="building" size={15}/>Property Details</div>
+          <InfoRow icon="listing" label="Type" value={d.listing_type?.label} th={th}/>
+          <InfoRow icon="info" label="Price" value={bdt(d.price)+'/month'} th={th}/>
+          <InfoRow icon="info" label="Deposit" value={d.deposit?bdt(d.deposit):null} th={th}/>
+          <InfoRow icon="building" label="Beds" value={d.beds} th={th}/>
+          <InfoRow icon="building" label="Baths" value={d.baths} th={th}/>
+          <InfoRow icon="info" label="Size" value={d.size?d.size+' sq ft':null} th={th}/>
+          <InfoRow icon="building" label="Floor" value={d.floor_no!=null?'Floor '+d.floor_no:null} th={th}/>
+          <InfoRow icon="info" label="Facing" value={d.facing?.label} th={th}/>
+          <InfoRow icon="info" label="Available From" value={d.available_from} th={th}/>
+        </Card>
+
+        {/* Location */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="pin" size={15}/>Location</div>
+          {loc&&<InfoRow icon="pin" label="Region" value={loc} th={th}/>}
+          <InfoRow icon="pin" label="Area" value={d.area} th={th}/>
+          <InfoRow icon="info" label="Road & House" value={d.road_and_house} th={th}/>
+          <InfoRow icon="info" label="Road" value={d.road} th={th}/>
+          <InfoRow icon="building" label="House Name" value={d.house_name} th={th}/>
+          <InfoRow icon="info" label="Block" value={d.block} th={th}/>
+          <InfoRow icon="info" label="Section" value={d.section} th={th}/>
+          {(d.coord_x||d.coord_y)&&<InfoRow icon="pin" label="Coordinates" value={`${d.coord_y||'—'}, ${d.coord_x||'—'}`} th={th}/>}
+        </Card>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        {/* Owner contact */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="users" size={15}/>Owner Contact</div>
+          {d.owner&&<div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:`1px solid ${th.borderSoft}`,marginBottom:4}}>
+            <Avt name={d.owner.name} size={36}/>
+            <div><div style={{fontSize:13.5,fontWeight:600,color:th.ink}}>{d.owner.name}</div>
+            <div style={{fontSize:12,color:th.inkSoft}}>{d.owner.email}</div></div>
+          </div>}
+          <InfoRow icon="users" label="Contact Name" value={d.owner_name} th={th}/>
+          <InfoRow icon="phone" label="Phone" value={d.owner_phone} th={th}/>
+          <InfoRow icon="phone" label="Alt Phone" value={d.owner_alt_phone} th={th}/>
+          <InfoRow icon="mail" label="Email" value={d.owner_email} th={th}/>
+          <InfoRow icon="info" label="Preferred Contact" value={d.preferred_contact?cap(d.preferred_contact):null} th={th}/>
+        </Card>
+
+        {/* Amenities + description */}
+        <Card th={th}>
+          <div style={{fontSize:14,fontWeight:700,color:th.ink,marginBottom:12,display:'flex',alignItems:'center',gap:6}}><Icon name="check" size={15}/>Amenities & Description</div>
+          {amenities.length>0?<div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:14}}>
+            {amenities.map(a=><span key={a.id} style={{padding:'4px 10px',borderRadius:999,background:th.primarySoft,color:th.primaryInk,fontSize:12,fontWeight:600}}>{a.label||a.name}</span>)}
+          </div>:<div style={{fontSize:13,color:th.inkSoft,marginBottom:14}}>No amenities listed.</div>}
+          {d.description&&<div style={{padding:'12px 14px',borderRadius:10,background:th.bgAlt,border:`1px solid ${th.border}`,fontSize:13.5,color:th.ink,lineHeight:1.65,whiteSpace:'pre-wrap'}}>{d.description}</div>}
+        </Card>
+      </div>
+
+      {/* Timestamps */}
+      <Card th={th} pad={14}>
+        <div style={{display:'flex',gap:24,fontSize:12,color:th.inkSoft}}>
+          <span>Created: {d.created_at?new Date(d.created_at).toLocaleString():'\u2014'}</span>
+          <span>Updated: {d.updated_at?new Date(d.updated_at).toLocaleString():'\u2014'}</span>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+// ─── approvals page ─────────────────────────────────────────────
+function PageApprovals({th,api}){
+  const toast=useToast();
+  const[pending,setPending]=React.useState([]);
+  const[recent,setRecent]=React.useState([]);
+  const[rejectTarget,setRejectTarget]=React.useState(null);
+  const[loading,setLoading]=React.useState(true);
+  const[acting,setActing]=React.useState(null);
+
+  const load=()=>{
+    setLoading(true);
+    api.get('/admin/listings?status=pending').then(r=>{setPending(r.data||[]);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+    api.get('/admin/listings?status=active').then(r=>setRecent((r.data||[]).slice(0,6))).catch(()=>{});
+  };
+  React.useEffect(()=>{load();},[]);
+
+  const approve=async id=>{
+    setActing(id+'a');
+    try{await api.post(`/admin/listings/${id}/approve`);toast('Listing approved and published!','success');load();}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+  const reject=async(id,reason)=>{
+    setActing(id+'r');
+    try{await api.post(`/admin/listings/${id}/reject`,{reason});toast('Listing rejected.','info');setRejectTarget(null);load();}
+    catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  return(
+    <div style={{padding:28,display:'grid',gridTemplateColumns:'1fr 320px',gap:20,alignItems:'start'}}>
+      {rejectTarget&&<RejectModal th={th} loading={acting===rejectTarget+'r'} onConfirm={r=>reject(rejectTarget,r)} onClose={()=>setRejectTarget(null)}/>}
+      {/* main queue */}
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <div style={{display:'flex',alignItems:'center',gap:12}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>{loading?'Loading…':`${pending.length} listing${pending.length!==1?'s':''} awaiting review`}</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Approve to publish, reject to remove from the queue.</div>
+          </div>
+          <div style={{flex:1}}/>
+          <IBtn th={th} icon="refresh" title="Refresh" onClick={load}/>
+        </div>
+        {loading?[1,2].map(i=><Card key={i} th={th} style={{height:200}}><Skeleton h="100%"/></Card>):
+          pending.map(l=>(
+            <Card key={l.id} th={th} pad={0} style={{overflow:'hidden'}}>
+              <div style={{display:'grid',gridTemplateColumns:'180px 1fr'}}>
+                {/* thumbnail placeholder */}
+                <div style={{position:'relative',background:`linear-gradient(135deg,#B8D4C8,#8FBFB8)`,minHeight:190,overflow:'hidden'}}>
+                  <svg viewBox="0 0 180 190" style={{position:'absolute',inset:0,opacity:.25,width:'100%',height:'100%'}}>
+                    <path d="M20 115 L90 60 L160 115 L160 170 L20 170 Z" fill="#fff"/>
+                    <rect x="74" y="115" width="32" height="55" fill="rgba(0,0,0,.3)"/>
+                    <rect x="30" y="125" width="28" height="20" fill="rgba(0,0,0,.15)"/>
+                    <rect x="122" y="125" width="28" height="20" fill="rgba(0,0,0,.15)"/>
+                  </svg>
+                  <div style={{position:'absolute',top:10,left:10,background:'rgba(0,0,0,.5)',backdropFilter:'blur(4px)',color:'#fff',fontSize:9.5,fontWeight:600,letterSpacing:.5,padding:'3px 7px',borderRadius:6,textTransform:'uppercase',fontFamily:'ui-monospace,monospace'}}>{(l.id||'').slice(0,8)}</div>
+                </div>
+                {/* content */}
+                <div style={{padding:'18px 20px',display:'flex',flexDirection:'column',gap:10}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:16,fontWeight:700,color:th.ink,letterSpacing:-.2,lineHeight:1.3}}>{l.title}</div>
+                      <div style={{fontSize:12.5,color:th.inkSoft,marginTop:5,display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}}>
+                        <span style={{display:'inline-flex',alignItems:'center',gap:3}}><Icon name="pin" size={11}/>{l.area}</span>
+                        <span>·</span><span>{l.type||'—'}</span>
+                        <span>·</span><span>{l.beds} bed{l.beds!==1?'s':''}</span>
+                        <span>·</span><span>Submitted {l.created}</span>
+                      </div>
+                    </div>
+                    <div style={{textAlign:'right',flexShrink:0}}>
+                      <div style={{fontSize:20,fontWeight:700,color:th.ink,letterSpacing:-.4,fontVariantNumeric:'tabular-nums'}}>{bdt(l.price)}</div>
+                      <div style={{fontSize:11,color:th.inkSoft,marginTop:2}}>per month</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderTop:`1px solid ${th.borderSoft}`}}>
+                    <Avt name={l.owner||'?'} size={28}/>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,color:th.ink,fontWeight:600}}>{l.owner||'—'}</div>
+                      <div style={{fontSize:11,color:th.inkSoft}}>Listing owner</div>
+                    </div>
+                  </div>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>approve(l.id)} disabled={acting===l.id+'a'} style={{flex:1,height:38,borderRadius:10,border:'none',background:th.success,color:'#fff',fontWeight:600,fontSize:13.5,display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,cursor:acting===l.id+'a'?'default':'pointer',opacity:acting===l.id+'a'?.7:1,boxShadow:`0 4px 12px ${alpha(th.success,.3)}`}}>
+                      {acting===l.id+'a'?<Icon name="spin" size={14}/>:<Icon name="check" size={14}/>}Approve
+                    </button>
+                    <button onClick={()=>setRejectTarget(l.id)} style={{flex:1,height:38,borderRadius:10,border:`1.5px solid ${th.border}`,background:th.surface,color:th.error,fontWeight:600,fontSize:13.5,display:'inline-flex',alignItems:'center',justifyContent:'center',gap:6,cursor:'pointer'}}>
+                      <Icon name="x" size={14}/>Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        }
+        {!loading&&pending.length===0&&(
+          <Card th={th}>
+            <div style={{textAlign:'center',padding:'40px 20px'}}>
+              <div style={{width:56,height:56,borderRadius:16,background:th.successSoft,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 14px'}}><Icon name="check" size={28} style={{color:th.success}}/></div>
+              <div style={{fontSize:15,fontWeight:700,color:th.ink}}>All caught up!</div>
+              <div style={{fontSize:13,color:th.inkSoft,marginTop:5}}>No listings are waiting for review.</div>
+            </div>
+          </Card>
+        )}
+      </div>
+      {/* sidebar */}
+      <div style={{display:'flex',flexDirection:'column',gap:14}}>
+        <Card th={th} pad={0}>
+          <div style={{padding:'16px 18px 12px'}}>
+            <div style={{fontSize:13.5,fontWeight:700,color:th.ink}}>Recently reviewed</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:2}}>Last approved listings</div>
+          </div>
+          {recent.length===0?<div style={{padding:'16px 18px',fontSize:13,color:th.inkSoft}}>No recent reviews.</div>:
+            recent.map(l=>(
+              <div key={l.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 18px',borderTop:`1px solid ${th.border}`}}>
+                <div style={{width:34,height:34,borderRadius:8,background:alpha(th.primary,.15),display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}><Icon name="listing" size={16} style={{color:th.primary}}/></div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12.5,fontWeight:600,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.title}</div>
+                  <div style={{fontSize:11,color:th.inkSoft}}>{l.owner} · {l.created}</div>
+                </div>
+                <StatusBadge status={l.status} th={th}/>
+              </div>
+            ))
+          }
+        </Card>
+        <Card th={th}>
+          <div style={{fontSize:13.5,fontWeight:700,color:th.ink,marginBottom:12}}>Common rejection reasons</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {['Title or content violates guidelines','Stock or fake photos used','Price seems unrealistic','Duplicate listing','Missing required info'].map(r=>(
+              <div key={r} style={{padding:'8px 10px',borderRadius:8,background:th.bgAlt,fontSize:12.5,color:th.inkMid,display:'flex',alignItems:'flex-start',gap:7,lineHeight:1.4}}>
+                <span style={{color:th.error,marginTop:2,flexShrink:0}}><Icon name="x" size={12}/></span>{r}
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ─── users page ─────────────────────────────────────────────────
+function PageUsers({th,api}){
+  const toast=useToast();
+  const[filter,setFilter]=React.useState('all');
+  const[search,setSearch]=React.useState('');
+  const[rows,setRows]=React.useState([]);
+  const[meta,setMeta]=React.useState(null);
+  const[page,setPage]=React.useState(1);
+  const[loading,setLoading]=React.useState(true);
+  const[editTarget,setEditTarget]=React.useState(null);
+  const[sessionsTarget,setSessionsTarget]=React.useState(null);
+  const[acting,setActing]=React.useState(null);
+
+  const load=React.useCallback((pg=page)=>{
+    setLoading(true);
+    const p=new URLSearchParams({page:pg});
+    if(filter==='owner'||filter==='renter')p.set('role',filter);
+    if(search)p.set('search',search);
+    api.get(`/admin/users?${p}`).then(r=>{setRows(r.data||[]);setMeta(r.meta||null);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[filter,search,page]);
+
+  React.useEffect(()=>{setPage(1);},[filter,search]);
+  React.useEffect(()=>{const t=setTimeout(()=>load(page),300);return()=>clearTimeout(t);},[filter,search,page]);
+
+  const save=async(id,fields)=>{
+    setActing(id+'e');
+    try{
+      await api.patch(`/admin/users/${id}`,{
+        name:        fields.name,
+        email:       fields.email,
+        phone:       fields.phone||null,
+        role:        fields.role,
+        is_complete: fields.is_complete,
+      });
+      toast('User updated.','success');
+      setEditTarget(null);
+      load(page);
+    }catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+  const del=async id=>{
+    if(!confirm('Delete this user and all their listings permanently?'))return;
+    try{await api.del(`/admin/users/${id}`);toast('User deleted.','info');load(page);}
+    catch(e){toast(e.message,'error');}
+  };
+
+  const tabs=[
+    {value:'all',   label:'All',     count:meta?.total},
+    {value:'owner', label:'Owners'},
+    {value:'renter',label:'Renters'},
+  ];
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {editTarget&&<EditUserModal th={th} user={editTarget} loading={acting===editTarget.id+'e'} onSave={f=>save(editTarget.id,f)} onClose={()=>setEditTarget(null)}/>}
+      {sessionsTarget&&<UserSessionsModal th={th} user={sessionsTarget} api={api} onClose={()=>setSessionsTarget(null)}/>}
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <Tabs th={th} value={filter} onChange={v=>{setFilter(v);setPage(1);}} options={tabs}/>
+        <div style={{flex:1}}/>
+        <SearchBar th={th} value={search} onChange={v=>{setSearch(v);setPage(1);}} placeholder="Find users…"/>
+        <IBtn th={th} icon="refresh" title="Refresh" onClick={()=>load(page)}/>
+      </div>
+      <Card th={th} pad={0}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontFamily:FN_FONT}}>
+            <thead>
+              <tr style={{background:th.bgAlt}}>
+                {['User','Contact','Role','Listings','Verified','Last active','Joined','Actions'].map((h,i)=>(
+                  <th key={i} style={{textAlign:i===3?'right':'left',fontSize:10.5,color:th.inkSoft,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',padding:'12px 16px',borderBottom:`1px solid ${th.border}`,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading?[1,2,3,4,5].map(i=>(
+                <tr key={i}><td colSpan={8} style={{padding:'12px 16px',borderBottom:`1px solid ${th.borderSoft}`}}><Skeleton h={20}/></td></tr>
+              )):rows.map(u=>(
+                <tr key={u.id} style={{borderBottom:`1px solid ${th.borderSoft}`,transition:'background .12s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=th.bgAlt}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{padding:'10px 16px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:12}}>
+                      <Avt name={u.name} size={36}/>
+                      <div>
+                        <div style={{fontSize:13.5,fontWeight:600,color:th.ink,whiteSpace:'nowrap'}}>{u.name}</div>
+                        <div style={{fontSize:11,color:th.inkFaint,fontFamily:'ui-monospace,monospace',marginTop:2}}>{(u.id||'').slice(0,8)}…</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{padding:'10px 16px'}}>
+                    <div style={{fontSize:12.5,color:th.inkMid,display:'flex',alignItems:'center',gap:5,whiteSpace:'nowrap'}}><Icon name="mail" size={12}/>{u.email}</div>
+                    {u.phone&&u.phone!=='—'&&<div style={{fontSize:11.5,color:th.inkSoft,display:'flex',alignItems:'center',gap:5,marginTop:3,whiteSpace:'nowrap'}}><Icon name="phone" size={11}/>{u.phone}</div>}
+                  </td>
+                  <td style={{padding:'11px 16px'}}><RoleBadge role={u.role} th={th}/></td>
+                  <td style={{padding:'11px 16px',textAlign:'right',fontSize:13.5,fontWeight:700,color:u.listings>0?th.ink:th.inkFaint,fontVariantNumeric:'tabular-nums'}}>{u.listings}</td>
+                  <td style={{padding:'11px 16px'}}>
+                    {u.verified
+                      ?<span style={{display:'inline-flex',alignItems:'center',gap:4,color:th.success,fontSize:12.5,fontWeight:600}}><Icon name="check" size={13}/>Verified</span>
+                      :<span style={{display:'inline-flex',alignItems:'center',gap:4,color:th.warning,fontSize:12.5,fontWeight:600}}><Icon name="warn" size={13}/>Pending</span>}
+                  </td>
+                  <td style={{padding:'11px 16px',fontSize:12.5,color:th.inkMid,whiteSpace:'nowrap'}}>{u.last_active}</td>
+                  <td style={{padding:'11px 16px',fontSize:12.5,color:th.inkSoft,whiteSpace:'nowrap'}}>{u.joined}</td>
+                  <td style={{padding:'8px 16px',textAlign:'right'}}>
+                    <div style={{display:'inline-flex',gap:5}}>
+                      <IBtn th={th} icon="edit" tone="primary" title="Edit user" loading={acting===u.id+'e'} onClick={()=>setEditTarget(u)}/>
+                      <IBtn th={th} icon="device" title="View sessions" onClick={()=>setSessionsTarget(u)}/>
+                      <IBtn th={th} icon="trash" tone="danger" title="Delete user" onClick={()=>del(u.id)}/>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading&&rows.length===0&&(
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <div style={{width:48,height:48,borderRadius:14,background:th.bgAlt,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Icon name="users" size={24} style={{color:th.inkFaint}}/></div>
+            <div style={{fontSize:14,fontWeight:600,color:th.ink}}>No users found</div>
+            <div style={{fontSize:13,color:th.inkSoft,marginTop:4}}>Try adjusting the filters or search term.</div>
+          </div>
+        )}
+        <Pagination meta={meta} onPage={p=>{setPage(p);load(p);}} th={th}/>
+      </Card>
+    </div>
+  );
+}
+
+// ─── sessions page ──────────────────────────────────────────────
+function PageSessions({th,api}){
+  const toast=useToast();
+  const[rows,setRows]=React.useState([]);
+  const[meta,setMeta]=React.useState(null);
+  const[page,setPage]=React.useState(1);
+  const[status,setStatus]=React.useState('all');
+  const[search,setSearch]=React.useState('');
+  const[loading,setLoading]=React.useState(true);
+
+  const load=React.useCallback((pg=page)=>{
+    setLoading(true);
+    const p=new URLSearchParams({page:pg});
+    if(status!=='all')p.set('status',status);
+    if(search)p.set('search',search);
+    api.get(`/admin/sessions?${p}`)
+      .then(r=>{setRows(r.data||[]);setMeta(r.meta||null);setLoading(false);})
+      .catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[status,search,page]);
+
+  React.useEffect(()=>{setPage(1);},[status,search]);
+  React.useEffect(()=>{const t=setTimeout(()=>load(page),300);return()=>clearTimeout(t);},[status,search,page]);
+
+  const fmtDate=d=>d?new Date(d).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+
+  const deviceIcon=type=>{
+    if(type==='ios'||type==='android')return(
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'block'}}><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+    );
+    return(
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'block'}}><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    );
+  };
+
+  const tabs=[{value:'all',label:'All'},{value:'active',label:'Active'},{value:'inactive',label:'Logged out'}];
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <Tabs th={th} value={status} onChange={v=>{setStatus(v);setPage(1);}} options={tabs}/>
+        <div style={{flex:1}}/>
+        <SearchBar th={th} value={search} onChange={v=>{setSearch(v);setPage(1);}} placeholder="Search by user name or email…"/>
+        <IBtn th={th} icon="refresh" title="Refresh" onClick={()=>load(page)}/>
+      </div>
+      <Card th={th} pad={0}>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontFamily:FN_FONT}}>
+            <thead>
+              <tr style={{background:th.bgAlt}}>
+                {['User','Device','Type','IP Address','Login time','Logout time','Status'].map((h,i)=>(
+                  <th key={i} style={{textAlign:'left',fontSize:10.5,color:th.inkSoft,fontWeight:700,letterSpacing:.5,textTransform:'uppercase',padding:'12px 16px',borderBottom:`1px solid ${th.border}`,whiteSpace:'nowrap'}}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading?[1,2,3,4,5].map(i=>(
+                <tr key={i}><td colSpan={7} style={{padding:'12px 16px',borderBottom:`1px solid ${th.borderSoft}`}}><Skeleton h={20}/></td></tr>
+              )):rows.map(s=>(
+                <tr key={s.id} style={{borderBottom:`1px solid ${th.borderSoft}`,transition:'background .12s'}}
+                  onMouseEnter={e=>e.currentTarget.style.background=th.bgAlt}
+                  onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                  <td style={{padding:'10px 16px'}}>
+                    {s.user?(
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:th.ink,whiteSpace:'nowrap'}}>{s.user.name}</div>
+                        <div style={{fontSize:11,color:th.inkSoft,marginTop:2}}>{s.user.email}</div>
+                      </div>
+                    ):<span style={{color:th.inkFaint,fontSize:12}}>Deleted user</span>}
+                  </td>
+                  <td style={{padding:'10px 16px'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,color:th.inkMid,fontSize:12.5}}>
+                      {deviceIcon(s.device_type)}
+                      <span style={{whiteSpace:'nowrap'}}>{s.device_model}</span>
+                    </div>
+                  </td>
+                  <td style={{padding:'10px 16px'}}>
+                    <span style={{fontSize:12,color:th.inkSoft,textTransform:'capitalize',background:th.bgAlt,padding:'3px 8px',borderRadius:6,border:`1px solid ${th.borderSoft}`}}>{s.device_type}</span>
+                  </td>
+                  <td style={{padding:'10px 16px',fontSize:12.5,color:th.inkMid,fontFamily:'ui-monospace,monospace',whiteSpace:'nowrap'}}>{s.ip_address||'—'}</td>
+                  <td style={{padding:'10px 16px',fontSize:12.5,color:th.inkMid,whiteSpace:'nowrap'}}>{fmtDate(s.logged_in_at)}</td>
+                  <td style={{padding:'10px 16px',fontSize:12.5,color:th.inkSoft,whiteSpace:'nowrap'}}>{fmtDate(s.logged_out_at)}</td>
+                  <td style={{padding:'10px 16px'}}>
+                    {s.is_active
+                      ?<span style={{display:'inline-flex',alignItems:'center',gap:4,color:th.success,fontSize:12,fontWeight:600,background:alpha(th.success,.1),padding:'3px 10px',borderRadius:20}}><span style={{width:6,height:6,borderRadius:'50%',background:th.success,display:'inline-block'}}/>Active</span>
+                      :<span style={{display:'inline-flex',alignItems:'center',gap:4,color:th.inkSoft,fontSize:12,fontWeight:500,background:th.bgAlt,padding:'3px 10px',borderRadius:20,border:`1px solid ${th.borderSoft}`}}>Logged out</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {!loading&&rows.length===0&&(
+          <div style={{padding:'48px 24px',textAlign:'center'}}>
+            <div style={{width:48,height:48,borderRadius:14,background:th.bgAlt,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}><Icon name="device" size={24} style={{color:th.inkFaint}}/></div>
+            <div style={{fontSize:14,fontWeight:600,color:th.ink}}>No sessions found</div>
+            <div style={{fontSize:13,color:th.inkSoft,marginTop:4}}>Sessions are recorded each time a user logs in.</div>
+          </div>
+        )}
+        <Pagination meta={meta} onPage={p=>{setPage(p);load(p);}} th={th}/>
+      </Card>
+    </div>
+  );
+}
+
+// ─── analytics page ─────────────────────────────────────────────
+function PageAnalytics({th,api}){
+  const toast=useToast();
+  const[data,setData]=React.useState(null);
+  const[loading,setLoading]=React.useState(true);
+  React.useEffect(()=>{
+    api.get('/admin/dashboard').then(r=>{setData(r.data);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  },[]);
+
+  const listingsTrend = data?.listings_trend||[];
+  const usersTrend    = data?.users_trend||[];
+  const byType        = typeDataWithColors(data?.by_type);
+  const byStatus      = statusDonut(data?.by_status,th);
+  const labels        = dayLabels(14);
+  const s             = data?.stats||{};
+
+  // sum of 7 days for this week vs previous
+  const thisWeek = listingsTrend.slice(7).reduce((a,b)=>a+b,0);
+  const lastWeek = listingsTrend.slice(0,7).reduce((a,b)=>a+b,0);
+  const weekDelta = lastWeek>0?Math.round(((thisWeek-lastWeek)/lastWeek)*100):null;
+
+  const thisWeekU = usersTrend.slice(7).reduce((a,b)=>a+b,0);
+  const lastWeekU = usersTrend.slice(0,7).reduce((a,b)=>a+b,0);
+  const weekDeltaU= lastWeekU>0?Math.round(((thisWeekU-lastWeekU)/lastWeekU)*100):null;
+
+  function TrendCard({title,hint,value,delta,trend,color,labels}){
+    return(
+      <Card th={th}>
+        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:16}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>{title}</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>{hint}</div>
+          </div>
+          {delta!=null&&<span style={{display:'inline-flex',alignItems:'center',gap:3,fontSize:11.5,fontWeight:700,color:delta>=0?th.success:th.error,background:delta>=0?th.successSoft:th.errorSoft,padding:'3px 8px',borderRadius:999}}>
+            <Icon name={delta>=0?'up':'dn'} size={11}/>{delta>=0?'+':''}{delta}% this week
+          </span>}
+        </div>
+        {loading?<Skeleton h={130}/>:<>
+          <div style={{fontSize:28,fontWeight:700,color:th.ink,letterSpacing:-.6,marginBottom:12,fontVariantNumeric:'tabular-nums'}}>{value}</div>
+          <Bars data={trend.length?trend:[0]} color={color} height={100}/>
+          <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontSize:11,color:th.inkSoft}}>
+            <span>{labels[0]}</span><span>{labels[6]}</span><span>{labels[13]}</span>
+          </div>
+        </>}
+      </Card>
+    );
+  }
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {/* trend cards */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <TrendCard title="New listings — 14 days" hint="Daily submissions to the platform"
+          value={listingsTrend.reduce((a,b)=>a+b,0)} delta={weekDelta}
+          trend={listingsTrend} color={th.primary} labels={labels}/>
+        <TrendCard title="New users — 14 days" hint="Daily user registrations"
+          value={usersTrend.reduce((a,b)=>a+b,0)} delta={weekDeltaU}
+          trend={usersTrend} color={th.secondary} labels={labels}/>
+      </div>
+
+      {/* distribution */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <Card th={th}>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>Listings by type</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>All listings grouped by listing type</div>
+          </div>
+          {loading?<Skeleton h={150}/>:
+            byType.length===0
+              ?<div style={{textAlign:'center',padding:'32px 0',color:th.inkSoft,fontSize:13}}>No data yet</div>
+              :<>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:18}}>
+                  <Donut th={th} data={byType} size={140} thickness={20}/>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {byType.map(d=>(
+                    <div key={d.type} style={{display:'flex',alignItems:'center',gap:9}}>
+                      <span style={{width:10,height:10,borderRadius:3,background:d.color,flexShrink:0}}/>
+                      <span style={{fontSize:12.5,color:th.inkMid,flex:1}}>{d.type}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:th.ink,fontVariantNumeric:'tabular-nums'}}>{d.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+          }
+        </Card>
+        <Card th={th}>
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>Listings by status</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Current status of all listings</div>
+          </div>
+          {loading?<Skeleton h={150}/>:
+            byStatus.length===0
+              ?<div style={{textAlign:'center',padding:'32px 0',color:th.inkSoft,fontSize:13}}>No data yet</div>
+              :<>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:18}}>
+                  <Donut th={th} data={byStatus} size={140} thickness={20}/>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {byStatus.map(d=>(
+                    <div key={d.type} style={{display:'flex',alignItems:'center',gap:9}}>
+                      <span style={{width:10,height:10,borderRadius:3,background:d.color,flexShrink:0}}/>
+                      <span style={{fontSize:12.5,color:th.inkMid,flex:1,textTransform:'capitalize'}}>{d.type}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:th.ink,fontVariantNumeric:'tabular-nums'}}>{d.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+          }
+        </Card>
+      </div>
+
+      {/* summary numbers */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14}}>
+        {[
+          {label:'Active listings',  value:s.active_listings??'—', color:th.success},
+          {label:'Pending review',   value:s.pending_approval??'—', color:th.warning},
+          {label:'Total listings',   value:s.total_listings??'—',   color:th.primary},
+          {label:'Total users',      value:s.total_users??'—',       color:th.secondary},
+        ].map(c=>(
+          <Card key={c.label} th={th} style={{borderTop:`3px solid ${c.color}`}}>
+            {loading?<Skeleton h={36}/>:<div style={{fontSize:30,fontWeight:700,color:th.ink,letterSpacing:-.6,fontVariantNumeric:'tabular-nums'}}>{c.value}</div>}
+            <div style={{fontSize:12.5,color:th.inkSoft,marginTop:8,fontWeight:500}}>{c.label}</div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── app root ────────────────────────────────────────────────────
+function App(){
+  const[token,setToken]=React.useState(()=>localStorage.getItem('fn_token')||'');
+  const[user,setUser]=React.useState(()=>{try{return JSON.parse(localStorage.getItem('fn_user')||'null');}catch{return null;}});
+  const[dark,setDark]=React.useState(()=>localStorage.getItem('fn_dark')!=='false');
+  const[page,setPage]=React.useState('dashboard');
+  const[detailId,setDetailId]=React.useState(null);
+  const[counts,setCounts]=React.useState({pending:0,listings:0,users:0});
+  const[metaTypes,setMetaTypes]=React.useState([]);
+  const[metaFacings,setMetaFacings]=React.useState([]);
+
+  const th=React.useMemo(()=>theme(dark),[dark]);
+
+  React.useEffect(()=>{document.body.style.background=th.bg;document.body.style.color=th.ink;},[th]);
+  React.useEffect(()=>{localStorage.setItem('fn_dark',dark);},[dark]);
+
+  const api=useApi(token);
+
+  const handleLogin=(tok,usr)=>{
+    localStorage.setItem('fn_token',tok);
+    localStorage.setItem('fn_user',JSON.stringify(usr));
+    setToken(tok);setUser(usr);
+  };
+  const handleLogout=()=>{
+    localStorage.removeItem('fn_token');
+    localStorage.removeItem('fn_user');
+    setToken('');setUser(null);
+  };
+
+  // Fetch dashboard counts
+  React.useEffect(()=>{
+    if(!token)return;
+    api.get('/admin/dashboard').then(r=>{
+      const s=r.data?.stats||{};
+      setCounts({pending:s.pending_approval||0,listings:s.total_listings||0,users:s.total_users||0});
+    }).catch(()=>{});
+  },[token,page]);
+
+  // Fetch meta data for dropdowns (listing types + facings)
+  React.useEffect(()=>{
+    if(!token)return;
+    api.get('/listing-types').then(r=>setMetaTypes(r.data||[])).catch(()=>{});
+    api.get('/meta/listing-facings').then(r=>setMetaFacings(r.data||[])).catch(()=>{});
+  },[token]);
+
+  // Navigate to page and clear detail
+  const navPage=(p)=>{setPage(p);setDetailId(null);};
+  // Navigate to listing detail
+  const viewDetail=(id)=>{setDetailId(id);setPage('listing-detail');};
+  const backToListings=()=>{setPage('listings');setDetailId(null);};
+
+  if(!token)return<ToastProvider><LoginPage th={th} onLogin={handleLogin}/></ToastProvider>;
+
+  const pagesMeta={
+    dashboard:       {title:'Dashboard',        crumb:'Overview'},
+    approvals:       {title:'Approvals',        crumb:'Listings · Pending review'},
+    listings:        {title:'Listings',          crumb:'Listings · All'},
+    'listing-detail':{title:'Listing Details',  crumb:'Listings · Detail'},
+    users:           {title:'Users',             crumb:'People · All'},
+    sessions:        {title:'Sessions',          crumb:'People · Login history'},
+    analytics:       {title:'Analytics',         crumb:'Insights · Last 14 days'},
+  };
+  const m=pagesMeta[page]||{title:page,crumb:''};
+
+  const pages={
+    dashboard:<PageDashboard th={th} setPage={navPage} api={api}/>,
+    approvals:<PageApprovals th={th} api={api}/>,
+    listings: <PageListings  th={th} api={api} onViewDetail={viewDetail} metaTypes={metaTypes} metaFacings={metaFacings}/>,
+    'listing-detail':detailId?<PageListingDetail th={th} api={api} listingId={detailId} onBack={backToListings} metaTypes={metaTypes} metaFacings={metaFacings}/>:null,
+    users:    <PageUsers     th={th} api={api}/>,
+    sessions: <PageSessions  th={th} api={api}/>,
+    analytics:<PageAnalytics th={th} api={api}/>,
+  };
+
+  // For sidebar highlight, treat listing-detail as listings
+  const sidebarPage=page==='listing-detail'?'listings':page;
+
+  return(
+    <ToastProvider>
+      <div style={{minHeight:'100vh',background:th.bg,color:th.ink,fontFamily:FN_FONT,display:'flex'}}>
+        <Sidebar th={th} page={sidebarPage} setPage={navPage} counts={counts} user={user}/>
+        <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
+          <TopBar th={th} title={m.title} crumb={m.crumb} dark={dark} toggleDark={()=>setDark(d=>!d)} onLogout={handleLogout}/>
+          <div style={{flex:1,overflowY:'auto'}}>{pages[page]}</div>
+        </div>
+      </div>
+    </ToastProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

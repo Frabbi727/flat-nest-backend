@@ -7,6 +7,7 @@ use App\Http\Helpers\ApiResponse;
 use App\Http\Requests\Device\RegisterFcmTokenRequest;
 use App\Models\DeviceSession;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DeviceController extends Controller
 {
@@ -26,5 +27,26 @@ class DeviceController extends Controller
         );
 
         return ApiResponse::success(null, 'Device registered');
+    }
+
+    public function sessions(Request $request): JsonResponse
+    {
+        $currentTokenId = $request->user()->currentAccessToken()->id;
+
+        $sessions = DeviceSession::where('user_id', $request->user()->id)
+            ->orderByDesc('logged_in_at')
+            ->get()
+            ->map(fn ($s) => [
+                'id'            => $s->id,
+                'device_model'  => $s->device_model ?? 'Unknown device',
+                'device_type'   => $s->device_type,
+                'ip_address'    => $s->ip_address,
+                'logged_in_at'  => $s->logged_in_at,
+                'logged_out_at' => $s->logged_out_at,
+                'is_active'     => is_null($s->logged_out_at),
+                'is_current'    => $s->access_token_id === $currentTokenId,
+            ]);
+
+        return ApiResponse::success($sessions);
     }
 }

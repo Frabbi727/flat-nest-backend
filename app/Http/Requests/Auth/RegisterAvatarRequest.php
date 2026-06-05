@@ -11,7 +11,7 @@ class RegisterAvatarRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'avatar' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+            'avatar' => 'required|image|mimes:jpg,jpeg,png|max:200',
         ];
     }
 }

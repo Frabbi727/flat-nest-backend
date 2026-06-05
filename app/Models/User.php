@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;
 
@@ -30,6 +29,17 @@ class User extends Authenticatable implements FilamentUser
     {
         parent::boot();
         static::creating(fn ($model) => $model->id = (string) Str::uuid());
+        static::deleting(function (User $user) {
+            // Delete each listing through Eloquent so the listing's own
+            // deleting hook fires and cleans up the photo directories
+            $user->listings()->each(fn (Listing $listing) => $listing->delete());
+
+            // Delete avatar file from storage
+            if ($user->avatar_url) {
+                $path = Str::after($user->avatar_url, Storage::disk('public')->url(''));
+                Storage::disk('public')->delete(ltrim($path, '/'));
+            }
+        });
     }
 
     protected function casts(): array
@@ -43,12 +53,6 @@ class User extends Authenticatable implements FilamentUser
     public function getAuthPassword(): string
     {
         return $this->password_hash ?? '';
-    }
-
-    // Only users with role=admin can access the Filament panel
-    public function canAccessPanel(Panel $panel): bool
-    {
-        return $this->role === 'admin';
     }
 
     public function listings()

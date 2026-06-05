@@ -22,10 +22,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login',    [AuthController::class, 'login']);
     Route::post('/auth/refresh',  [AuthController::class, 'refresh']);
 
-    // Listings — public
-    Route::get('/listings',         [ListingController::class, 'index']);
-    Route::get('/listings/nearby',  [ListingController::class, 'nearby']); // must be before /{id}
-    Route::get('/listings/{id}',    [ListingController::class, 'show']);
+    // Listings — public browse (no owner contact in response for guests)
+    Route::get('/listings', [ListingController::class, 'index']);
 
 
     // Geo — public
@@ -47,6 +45,10 @@ Route::prefix('v1')->group(function () {
 
     // Protected routes
     Route::middleware('auth:sanctum')->group(function () {
+
+        // Listings — auth required (detail + map expose owner contact)
+        Route::get('/listings/nearby', [ListingController::class, 'nearby']); // must be before /{id}
+        Route::get('/listings/{id}',   [ListingController::class, 'show']);
 
         // Auth
         Route::post ('/auth/logout',           [AuthController::class, 'logout']);

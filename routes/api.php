@@ -81,6 +81,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/chats',                    [ChatController::class, 'start']);
         Route::get ('/chats/{id}/messages',      [ChatController::class, 'messages']);
         Route::post('/chats/{id}/messages',      [ChatController::class, 'sendMessage']);
+        Route::post('/chats/{id}/accept',        [ChatController::class, 'acceptRequest']);
+        Route::post('/chats/{id}/reject',        [ChatController::class, 'rejectRequest']);
 
         // Amenities — write (admin/owner protected)
         Route::post  ('/amenities',      [AmenityController::class, 'store']);

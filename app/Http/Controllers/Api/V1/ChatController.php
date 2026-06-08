@@ -26,14 +26,14 @@ class ChatController extends Controller
     public function start(StartChatRequest $request): JsonResponse
     {
         $result = $this->chat->startChat($request->user(), $request->listing_id, $request->initial_message);
-        return ApiResponse::success(['chat_id' => $result['chat']->id], null, 201);
+        return ApiResponse::success(['chat_id' => $result['chat']->id], 'Chat request sent.', 201);
     }
 
     public function messages(Request $request, string $id): JsonResponse
     {
         $result = $this->chat->getMessages($id, $request->user()->id);
         return ApiResponse::success([
-            'chat'     => ['id' => $result['chat']->id],
+            'chat'     => ['id' => $result['chat']->id, 'status' => $result['chat']->status],
             'messages' => MessageResource::collection($result['messages']),
         ]);
     }
@@ -42,5 +42,17 @@ class ChatController extends Controller
     {
         $message = $this->chat->sendMessage($id, $request->user(), $request->text);
         return ApiResponse::success(new MessageResource($message), null, 201);
+    }
+
+    public function acceptRequest(Request $request, string $id): JsonResponse
+    {
+        $this->chat->acceptChat($id, $request->user());
+        return ApiResponse::success(null, 'Chat request accepted.');
+    }
+
+    public function rejectRequest(Request $request, string $id): JsonResponse
+    {
+        $this->chat->rejectChat($id, $request->user());
+        return ApiResponse::success(null, 'Chat request rejected.');
     }
 }

@@ -4,11 +4,13 @@ namespace App\Repositories;
 
 use App\Contracts\Repositories\NotificationRepositoryInterface;
 use App\Models\AppNotification;
-use Illuminate\Database\Eloquent\Collection;
+use App\Services\FcmService;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class NotificationRepository implements NotificationRepositoryInterface
 {
+    public function __construct(private readonly FcmService $fcm) {}
+
     public function forUser(string $userId): LengthAwarePaginator
     {
         return AppNotification::where('user_id', $userId)->latest()->paginate(20);
@@ -21,7 +23,19 @@ class NotificationRepository implements NotificationRepositoryInterface
 
     public function create(array $data): AppNotification
     {
-        return AppNotification::create($data);
+        $notification = AppNotification::create($data);
+
+        $this->fcm->sendToUser(
+            $notification->user_id,
+            $notification->title,
+            $notification->body,
+            [
+                'kind'         => $notification->kind,
+                'reference_id' => $notification->reference_id,
+            ]
+        );
+
+        return $notification;
     }
 
     public function markRead(AppNotification $notification): void

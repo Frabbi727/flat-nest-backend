@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ChatService
@@ -79,8 +80,13 @@ class ChatService
             throw new NotFoundHttpException('Chat not found');
         }
 
-        if ($chat->status !== 'accepted') {
-            throw new AccessDeniedHttpException('This chat has not been accepted.');
+        if ($chat->status === 'rejected' || $chat->status === 'blocked') {
+            throw new AccessDeniedHttpException('This chat is not active.');
+        }
+
+        // If the chat is pending, only the renter can send messages.
+        if ($chat->status === 'pending' && $sender->id !== $chat->renter_id) {
+            throw new AccessDeniedHttpException('You must accept the chat request before sending messages.');
         }
 
         $message     = $this->chats->createMessage($chat->id, $sender->id, $text);
@@ -96,14 +102,14 @@ class ChatService
 
     public function acceptChat(string $chatId, User $user): void
     {
-        $chat = $this->chats->find($chatId);
+        $chat = $this->chats->findById($chatId);
 
         if (!$chat || $chat->owner_id !== $user->id) {
             throw new AccessDeniedHttpException('You are not authorized to accept this chat.');
         }
 
         if ($chat->status !== 'pending') {
-            return; // Or throw an exception if you want to be stricter
+            throw new BadRequestHttpException('This chat request has already been processed.');
         }
 
         $chat->update(['status' => 'accepted']);
@@ -113,14 +119,14 @@ class ChatService
 
     public function rejectChat(string $chatId, User $user): void
     {
-        $chat = $this->chats->find($chatId);
+        $chat = $this->chats->findById($chatId);
 
         if (!$chat || $chat->owner_id !== $user->id) {
             throw new AccessDeniedHttpException('You are not authorized to reject this chat.');
         }
 
         if ($chat->status !== 'pending') {
-            return;
+            throw new BadRequestHttpException('This chat request has already been processed.');
         }
 
         $chat->update(['status' => 'rejected']);

@@ -11,7 +11,7 @@ class Chat extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['renter_id', 'owner_id', 'listing_id'];
+    protected $fillable = ['renter_id', 'owner_id', 'listing_id', 'status'];
 
     protected static function boot(): void
     {

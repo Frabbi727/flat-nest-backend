@@ -47,12 +47,12 @@ class ChatController extends Controller
     public function acceptRequest(Request $request, string $id): JsonResponse
     {
         $this->chat->acceptChat($id, $request->user());
-        return ApiResponse::success(null, 'Chat request accepted.');
+        return ApiResponse::success(['id' => $id, 'status' => 'accepted'], 'Chat request accepted.');
     }
 
     public function rejectRequest(Request $request, string $id): JsonResponse
     {
         $this->chat->rejectChat($id, $request->user());
-        return ApiResponse::success(null, 'Chat request rejected.');
+        return ApiResponse::success(['id' => $id, 'status' => 'rejected'], 'Chat request rejected.');
     }
 }

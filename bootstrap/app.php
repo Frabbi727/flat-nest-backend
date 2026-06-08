@@ -35,13 +35,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, $request) use ($json) {
             if ($json($request)) {
-                return ApiResponse::error('Not found.', 'NOT_FOUND', 404);
+                return ApiResponse::error($e->getMessage() ?: 'Not found.', 'NOT_FOUND', 404);
             }
         });
 
         $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException $e, $request) use ($json) {
             if ($json($request)) {
-                return ApiResponse::error('Forbidden.', 'FORBIDDEN', 403);
+                // If it's a default Laravel policy exception it might say "This action is unauthorized.",
+                // but we can preserve custom service exceptions like "You must accept the chat request before sending messages."
+                return ApiResponse::error($e->getMessage() ?: 'Forbidden.', 'FORBIDDEN', 403);
             }
         });
 

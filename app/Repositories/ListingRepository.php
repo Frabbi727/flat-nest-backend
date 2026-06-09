@@ -11,7 +11,7 @@ class ListingRepository implements ListingRepositoryInterface
 {
     public function findActive(array $filters): LengthAwarePaginator
     {
-        $query = Listing::with(['owner:id,name,phone', 'photos', 'amenities', 'listingType', 'facing', 'division', 'district', 'upazila', 'union'])
+        $query = Listing::with(['photos', 'amenities', 'listingType', 'facing', 'division', 'district', 'upazila', 'union'])
             ->where('status', ListingStatus::Active)
             ->when($filters['search'] ?? null, function ($q, $search) {
                 $term = '%' . $search . '%';
@@ -61,7 +61,7 @@ class ListingRepository implements ListingRepositoryInterface
     public function findById(string $id): ?Listing
     {
         return Listing::with([
-            'owner:id,name,phone', 'photos', 'amenities', 'listingType',
+            'photos', 'amenities', 'listingType',
             'facing', 'division', 'district', 'upazila', 'union',
         ])->find($id);
     }
@@ -105,7 +105,7 @@ class ListingRepository implements ListingRepositoryInterface
         $lngDelta = $radius / (111.0 * cos(deg2rad($lat)));
 
         // STEP 2 — Haversine exact distance with acos clamped to [-1, 1]
-        $query = Listing::with(['owner:id,name,phone', 'photos', 'amenities', 'listingType', 'facing', 'division', 'district', 'upazila', 'union'])
+        $query = Listing::with(['photos', 'amenities', 'listingType', 'facing', 'division', 'district', 'upazila', 'union'])
             ->where('status', ListingStatus::Active)
             ->whereNotNull('coord_x')
             ->whereNotNull('coord_y')
@@ -136,7 +136,7 @@ class ListingRepository implements ListingRepositoryInterface
             // ── Location (narrow down within radius) ──────────────────────
             ->when($filters['division_id'] ?? null,     fn ($q, $v) => $q->where('division_id', $v))
             ->when($filters['district_id'] ?? null,     fn ($q, $v) => $q->where('district_id', $v))
-            ->when($filters['upazila_id'] ?? null,      fn ($q, $v) => $q->where('upazila_id', $v))
+            ->when($files['upazila_id'] ?? null,      fn ($q, $v) => $q->where('upazila_id', $v))
             ->when($filters['union_id'] ?? null,        fn ($q, $v) => $q->where('union_id', $v))
             // ── Text search ───────────────────────────────────────────────
             ->when($filters['search'] ?? null, function ($q, $search) {

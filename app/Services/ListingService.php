@@ -68,10 +68,16 @@ class ListingService
 
         $this->listings->incrementViews($listing);
 
-        return $listing->fresh([
-            'owner:id,name,phone', 'photos', 'amenities', 'listingType',
+        $relations = [
+            'photos', 'amenities', 'listingType',
             'facing', 'division', 'district', 'upazila', 'union',
-        ]);
+        ];
+
+        if (auth('sanctum')->check()) {
+            $relations[] = 'owner:id,name,phone';
+        }
+
+        return $listing->fresh($relations);
     }
 
     public function getOwnerDashboard(string $ownerId, array $filters = []): LengthAwarePaginator

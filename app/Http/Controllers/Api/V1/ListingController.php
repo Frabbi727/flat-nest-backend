@@ -15,17 +15,6 @@ class ListingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $filterParams = [
-            'search', 'listing_type_id', 'price_min', 'price_max', 'beds', 'baths',
-            'facing_id', 'floor_min', 'floor_max', 'size_min', 'size_max',
-            'available_from_start', 'available_from_end', 'amenities',
-            'division_id', 'district_id', 'upazila_id', 'union_id', 'sort_by',
-        ];
-
-        if ($request->hasAny($filterParams) && ! auth('sanctum')->check()) {
-            return ApiResponse::error('Unauthenticated.', 'UNAUTHENTICATED', 401);
-        }
-
         $filters = $request->only([
             'search',
             'listing_type_id',

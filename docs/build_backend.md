@@ -6,6 +6,7 @@
 
 ---
 
+
 ## Stack
 
 - **Framework:** Laravel 11 (PHP 8.2+)

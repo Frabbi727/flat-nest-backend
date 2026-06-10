@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Contracts\Repositories\ListingAccessRequestRepositoryInterface;
 use App\Contracts\Repositories\ListingRepositoryInterface;
+use App\Enums\ListingAccessStatus;
 use App\Enums\ListingStatus;
 use App\Enums\NotificationKind;
 use App\Models\AppNotification;
@@ -19,6 +21,7 @@ class ListingService
 {
     public function __construct(
         private readonly ListingRepositoryInterface $listings,
+        private readonly ListingAccessRequestRepositoryInterface $accessRequests,
         private readonly FcmService $fcm,
     ) {}
 
@@ -58,7 +61,7 @@ class ListingService
         return $this->listings->findNearby($lat, $lng, $radius, $filters);
     }
 
-    public function getById(string $id): Listing
+    public function getById(string $id, ?string $requesterId = null): Listing
     {
         $listing = $this->listings->findById($id);
 
@@ -73,11 +76,25 @@ class ListingService
             'facing', 'division', 'district', 'upazila', 'union',
         ];
 
-        if (auth('sanctum')->check()) {
+        if ($requesterId) {
             $relations[] = 'owner:id,name,phone';
         }
 
-        return $listing->fresh($relations);
+        $listing = $listing->fresh($relations);
+
+        if ($requesterId && $requesterId === $listing->owner_id) {
+            $listing->user_has_access       = true;
+            $listing->access_request_status = null;
+        } elseif ($requesterId) {
+            $accessRequest = $this->accessRequests->findByListingAndRequester($listing->id, $requesterId);
+            $listing->user_has_access       = $accessRequest?->status === ListingAccessStatus::Accepted;
+            $listing->access_request_status = $accessRequest?->status?->value;
+        } else {
+            $listing->user_has_access       = false;
+            $listing->access_request_status = null;
+        }
+
+        return $listing;
     }
 
     public function getOwnerDashboard(string $ownerId, array $filters = []): LengthAwarePaginator

@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AdminController;
 use App\Http\Controllers\Api\V1\AmenityController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ChatController;
+use App\Http\Controllers\Api\V1\ListingAccessController;
 use App\Http\Controllers\Api\V1\DeviceController;
 use App\Http\Controllers\Api\V1\GeoController;
 use App\Http\Controllers\Api\V1\UserController;
@@ -49,8 +50,9 @@ Route::prefix('v1')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
 
         // Listings — auth required (detail + map expose owner contact)
-        Route::get('/listings/nearby', [ListingController::class, 'nearby']); // must be before /{id}
-        Route::get('/listings/{id}',   [ListingController::class, 'show']);
+        Route::get ('/listings/nearby',                       [ListingController::class, 'nearby']); // must be before /{id}
+        Route::get ('/listings/{id}',                         [ListingController::class, 'show']);
+        Route::post('/listings/{listingId}/request-access',   [ListingAccessController::class, 'request']);
 
         // Auth
         Route::post  ('/auth/logout',          [AuthController::class, 'logout']);
@@ -65,7 +67,10 @@ Route::prefix('v1')->group(function () {
 
         // Owner
         Route::middleware('owner')->group(function () {
-            Route::get   ('/owner/listings',            [OwnerController::class, 'index']);
+            Route::get   ('/owner/listings',                          [OwnerController::class, 'index']);
+            Route::get   ('/owner/access-requests',                   [ListingAccessController::class, 'ownerIndex']);
+            Route::post  ('/owner/access-requests/{id}/accept',       [ListingAccessController::class, 'accept']);
+            Route::post  ('/owner/access-requests/{id}/reject',       [ListingAccessController::class, 'reject']);
             Route::post  ('/listings',                  [OwnerController::class, 'store']);
             Route::post  ('/listings/{id}/photos',      [OwnerController::class, 'uploadPhotos']);
             Route::patch ('/listings/{id}/location',    [OwnerController::class, 'updateLocation']);

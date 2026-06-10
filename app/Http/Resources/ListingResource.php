@@ -7,6 +7,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class ListingResource extends JsonResource
 {
+    private function canSeePrivate(): bool
+    {
+        return $this->resource->user_has_access ?? false;
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -53,23 +58,24 @@ class ListingResource extends JsonResource
                 'id'   => $this->union->id,
                 'name' => $this->union->name,
             ]),
-            'area'              => $this->area,
-            'road'              => $this->road,
-            'house_name'        => $this->house_name,
-            'block'             => $this->block,
-            'section'           => $this->section,
-            'coord_x'           => $this->coord_x,
-            'coord_y'           => $this->coord_y,
-            'owner_name'        => $this->when(auth('sanctum')->check(), $this->owner_name),
-            'owner_phone'       => $this->when(auth('sanctum')->check(), $this->owner_phone),
-            'owner_alt_phone'   => $this->when(auth('sanctum')->check(), $this->owner_alt_phone),
-            'owner_email'       => $this->when(auth('sanctum')->check(), $this->owner_email),
-            'preferred_contact' => $this->when(auth('sanctum')->check(), $this->preferred_contact),
-            'status'            => $this->status->value,
-            'status_label'      => $this->status->label(),
-            'rejection_reason'  => $this->rejection_reason,
-            'views'             => $this->views,
-            'owner'             => $this->when(auth('sanctum')->check(), new UserResource($this->whenLoaded('owner'))),
+            'area'                  => $this->area,
+            'road'                  => $this->when($this->canSeePrivate(), $this->road),
+            'house_name'            => $this->when($this->canSeePrivate(), $this->house_name),
+            'block'                 => $this->when($this->canSeePrivate(), $this->block),
+            'section'               => $this->when($this->canSeePrivate(), $this->section),
+            'coord_x'               => $this->when($this->canSeePrivate(), $this->coord_x),
+            'coord_y'               => $this->when($this->canSeePrivate(), $this->coord_y),
+            'owner_name'            => $this->when($this->canSeePrivate(), $this->owner_name),
+            'owner_phone'           => $this->when($this->canSeePrivate(), $this->owner_phone),
+            'owner_alt_phone'       => $this->when($this->canSeePrivate(), $this->owner_alt_phone),
+            'owner_email'           => $this->when($this->canSeePrivate(), $this->owner_email),
+            'preferred_contact'     => $this->when($this->canSeePrivate(), $this->preferred_contact),
+            'access_request_status' => $this->access_request_status ?? null,
+            'status'                => $this->status->value,
+            'status_label'          => $this->status->label(),
+            'rejection_reason'      => $this->rejection_reason,
+            'views'                 => $this->views,
+            'owner'                 => $this->when($this->canSeePrivate(), new UserResource($this->whenLoaded('owner'))),
             'photos'            => ListingPhotoResource::collection($this->whenLoaded('photos')),
             'amenities'         => $this->whenLoaded('amenities', fn () =>
                 $this->amenities->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'label' => $a->label])

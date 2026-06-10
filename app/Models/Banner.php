@@ -26,5 +26,11 @@ class Banner extends Model
                 static::where('id', '!=', $banner->id)->update(['is_active' => false]);
             }
         });
+
+        static::deleting(function ($banner) {
+            $banner->images()->each(function ($image) {
+                $image->delete(); // This triggers BannerImage's deleted event to remove files
+            });
+        });
     }
 }

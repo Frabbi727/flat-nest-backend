@@ -17,11 +17,16 @@ class ListingRepository implements ListingRepositoryInterface
                 $term = '%' . $search . '%';
                 $q->where(function ($q) use ($term) {
                     $q->where('title', 'like', $term)
+                      ->orWhere('description', 'like', $term)
                       ->orWhere('area', 'like', $term)
                       ->orWhere('road', 'like', $term)
                       ->orWhere('house_name', 'like', $term)
                       ->orWhere('block', 'like', $term)
-                      ->orWhere('section', 'like', $term);
+                      ->orWhere('section', 'like', $term)
+                      ->orWhere('road_and_house', 'like', $term)
+                      ->orWhereHas('district', fn($dq) => $dq->where('name', 'like', $term)->orWhere('bn_name', 'like', $term))
+                      ->orWhereHas('upazila', fn($uq) => $uq->where('name', 'like', $term)->orWhere('bn_name', 'like', $term))
+                      ->orWhereHas('union', fn($unq) => $unq->where('name', 'like', $term)->orWhere('bn_name', 'like', $term));
                 });
             })
             ->when($filters['division_id'] ?? null, fn ($q, $v) => $q->where('division_id', $v))
@@ -143,11 +148,16 @@ class ListingRepository implements ListingRepositoryInterface
                 $term = '%' . $search . '%';
                 $q->where(function ($q) use ($term) {
                     $q->where('title', 'like', $term)
+                      ->orWhere('description', 'like', $term)
                       ->orWhere('area', 'like', $term)
                       ->orWhere('road', 'like', $term)
                       ->orWhere('house_name', 'like', $term)
                       ->orWhere('block', 'like', $term)
-                      ->orWhere('section', 'like', $term);
+                      ->orWhere('section', 'like', $term)
+                      ->orWhere('road_and_house', 'like', $term)
+                      ->orWhereHas('district', fn($dq) => $dq->where('name', 'like', $term)->orWhere('bn_name', 'like', $term))
+                      ->orWhereHas('upazila', fn($uq) => $uq->where('name', 'like', $term)->orWhere('bn_name', 'like', $term))
+                      ->orWhereHas('union', fn($unq) => $unq->where('name', 'like', $term)->orWhere('bn_name', 'like', $term));
                 });
             })
             // ── Amenities (each amenity must be present) ──────────────────

@@ -438,7 +438,7 @@ class AdminController extends Controller
         }
 
         $request->validate([
-            'image'      => 'required|image|max:10240', // 10MB raw limit, will compress
+            'image'      => 'required|image|max:10240', // 10MB raw limit
             'target_url' => 'nullable|url',
             'order'      => 'nullable|integer',
         ]);
@@ -454,8 +454,8 @@ class AdminController extends Controller
             ]);
 
             return ApiResponse::success($bannerImage, 'Image added successfully');
-        } catch (\Exception $e) {
-            return ApiResponse::error('Failed to process image: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            return ApiResponse::error('Failed to process image: ' . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
         }
     }
 
@@ -483,28 +483,28 @@ class AdminController extends Controller
 
     private function compressAndSaveImage($file, $targetSizeKb = 200)
     {
-        $manager = new ImageManager(new Driver());
-        $image = $manager->read($file);
+        try {
+            $manager = new ImageManager(new Driver());
+            $image = $manager->read($file);
 
-        $quality = 90;
-        
-        // Ensure directory exists
-        if (!Storage::disk('public')->exists('banners')) {
-            Storage::disk('public')->makeDirectory('banners');
+            $quality = 90;
+            $encoded = null;
+            
+            do {
+                $encoded = $image->toWebp($quality);
+                if ($encoded->size() / 1024 <= $targetSizeKb || $quality <= 10) {
+                    break;
+                }
+                $quality -= 10;
+            } while (true);
+
+            $filename = 'banners/' . uniqid() . '.webp';
+            Storage::disk('public')->put($filename, $encoded->toBuffer());
+            
+            return $filename;
+        } catch (\Throwable $e) {
+            // Fallback: save raw file if compression fails
+            return $file->store('banners', 'public');
         }
-
-        $encoded = null;
-        do {
-            $encoded = $image->toWebp($quality);
-            if ($encoded->size() / 1024 <= $targetSizeKb || $quality <= 10) {
-                break;
-            }
-            $quality -= 10;
-        } while (true);
-
-        $filename = 'banners/' . uniqid() . '.webp';
-        Storage::disk('public')->put($filename, (string) $encoded);
-        
-        return $filename;
     }
 }

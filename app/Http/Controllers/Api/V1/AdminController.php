@@ -6,14 +6,20 @@ use App\Enums\ListingStatus;
 use App\Enums\NotificationKind;
 use App\Http\Controllers\Controller;
 use App\Http\Helpers\ApiResponse;
+use App\Http\Resources\BannerResource;
 use App\Http\Resources\ListingResource;
 use App\Models\AppNotification;
+use App\Models\Banner;
+use App\Models\BannerImage;
 use App\Models\DeviceSession;
 use App\Models\Listing;
 use App\Models\User;
 use App\Services\FcmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class AdminController extends Controller
 {
@@ -226,7 +232,7 @@ class AdminController extends Controller
             'price'             => 'sometimes|integer|min:0',
             'deposit'           => 'sometimes|nullable|integer|min:0',
             'beds'              => 'sometimes|integer|min:0',
-            'baths'             => 'sometimes|integer|min:0',
+            'baths'              => 'sometimes|integer|min:0',
             'size'              => 'sometimes|nullable|integer|min:0',
             'floor_no'          => 'sometimes|nullable|integer|min:0',
             'listing_type_id'   => 'sometimes|nullable|exists:listing_types,id',
@@ -373,5 +379,132 @@ class AdminController extends Controller
         ]);
 
         return ApiResponse::paginated($data, $paginator);
+    }
+
+    public function allBanners(): JsonResponse
+    {
+        $banners = Banner::withCount('images')->latest()->get();
+        return ApiResponse::success($banners);
+    }
+
+    public function storeBanner(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'is_active'   => 'boolean',
+        ]);
+
+        $banner = Banner::create($request->all());
+
+        return ApiResponse::success($banner, 'Banner created successfully', 201);
+    }
+
+    public function showBanner(string $id): JsonResponse
+    {
+        $banner = Banner::with(['images' => fn ($q) => $q->orderBy('order')])->findOrFail($id);
+        return ApiResponse::success(new BannerResource($banner));
+    }
+
+    public function updateBanner(Request $request, string $id): JsonResponse
+    {
+        $request->validate([
+            'title'       => 'sometimes|string|max:255',
+            'description' => 'sometimes|nullable|string',
+            'is_active'   => 'sometimes|boolean',
+        ]);
+
+        $banner = Banner::findOrFail($id);
+        $banner->update($request->all());
+
+        return ApiResponse::success($banner, 'Banner updated successfully');
+    }
+
+    public function deleteBanner(string $id): JsonResponse
+    {
+        $banner = Banner::findOrFail($id);
+        // Images will be deleted via model boot events
+        $banner->delete();
+
+        return ApiResponse::success(null, 'Banner deleted successfully');
+    }
+
+    public function addBannerImage(Request $request, string $id): JsonResponse
+    {
+        $banner = Banner::findOrFail($id);
+
+        if ($banner->images()->count() >= 5) {
+            return ApiResponse::error('Maximum 5 images allowed per banner', null, 422);
+        }
+
+        $request->validate([
+            'image'      => 'required|image|max:10240', // 10MB raw limit, will compress
+            'target_url' => 'nullable|url',
+            'order'      => 'nullable|integer',
+        ]);
+
+        try {
+            $path = $this->compressAndSaveImage($request->file('image'));
+
+            $bannerImage = $banner->images()->create([
+                'image_path' => $path,
+                'target_url' => $request->target_url,
+                'order'      => $request->order ?? 0,
+                'is_active'  => true,
+            ]);
+
+            return ApiResponse::success($bannerImage, 'Image added successfully');
+        } catch (\Exception $e) {
+            return ApiResponse::error('Failed to process image: ' . $e->getMessage());
+        }
+    }
+
+    public function updateBannerImage(Request $request, string $imageId): JsonResponse
+    {
+        $request->validate([
+            'target_url' => 'sometimes|nullable|url',
+            'order'      => 'sometimes|integer',
+            'is_active'  => 'sometimes|boolean',
+        ]);
+
+        $image = BannerImage::findOrFail($imageId);
+        $image->update($request->all());
+
+        return ApiResponse::success($image, 'Banner image updated');
+    }
+
+    public function deleteBannerImage(string $imageId): JsonResponse
+    {
+        $image = BannerImage::findOrFail($imageId);
+        $image->delete(); // boots delete from storage
+
+        return ApiResponse::success(null, 'Banner image deleted');
+    }
+
+    private function compressAndSaveImage($file, $targetSizeKb = 200)
+    {
+        $manager = new ImageManager(new Driver());
+        $image = $manager->read($file);
+
+        $quality = 90;
+        
+        // Ensure directory exists
+        if (!Storage::disk('public')->exists('banners')) {
+            Storage::disk('public')->makeDirectory('banners');
+        }
+
+        $encoded = null;
+        do {
+            $encoded = $image->toWebp($quality);
+            if ($encoded->size() / 1024 <= $targetSizeKb || $quality <= 10) {
+                break;
+            }
+            $quality -= 10;
+        } while (true);
+
+        $filename = 'banners/' . uniqid() . '.webp';
+        Storage::disk('public')->put($filename, (string) $encoded);
+        
+        return $filename;
     }
 }

@@ -27,6 +27,8 @@ Route::prefix('v1')->group(function () {
     // Listings — public browse (no owner contact in response for guests)
     Route::get('/listings', [ListingController::class, 'index']);
 
+    // Banners — public
+    Route::get('/banners/active', [BannerController::class, 'active']);
 
     // Geo — public
     Route::get('/geo/divisions',               [GeoController::class, 'divisions']);
@@ -126,6 +128,16 @@ Route::prefix('v1')->group(function () {
             Route::delete('/listings/{id}',              [AdminController::class, 'deleteListing']);
             Route::patch ('/users/{id}',                 [AdminController::class, 'updateUser']);
             Route::delete('/users/{id}',                 [AdminController::class, 'deleteUser']);
+
+            // Banners
+            Route::get   ('/banners',                    [AdminController::class, 'allBanners']);
+            Route::post  ('/banners',                    [AdminController::class, 'storeBanner']);
+            Route::get   ('/banners/{id}',               [AdminController::class, 'showBanner']);
+            Route::patch ('/banners/{id}',               [AdminController::class, 'updateBanner']);
+            Route::delete('/banners/{id}',               [AdminController::class, 'deleteBanner']);
+            Route::post  ('/banners/{id}/images',        [AdminController::class, 'addBannerImage']);
+            Route::delete('/banners/images/{imageId}',   [AdminController::class, 'deleteBannerImage']);
+            Route::patch ('/banners/images/{imageId}',   [AdminController::class, 'updateBannerImage']);
         });
     });
 });

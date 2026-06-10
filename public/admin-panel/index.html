@@ -245,7 +245,10 @@ function Pagination({meta,onPage,th}){
 // ─── api hook ───────────────────────────────────────────────────
 function useApi(token){
   const call=React.useCallback(async(method,path,body)=>{
-    const res=await fetch(API+path,{method,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'Accept':'application/json'},body:body?JSON.stringify(body):undefined});
+    const isFD=body instanceof FormData;
+    const headers={'Authorization':`Bearer ${token}`,'Accept':'application/json'};
+    if(!isFD)headers['Content-Type']='application/json';
+    const res=await fetch(API+path,{method,headers,body:body?(isFD?body:JSON.stringify(body)):undefined});
     const json=await res.json();
     if(!res.ok)throw new Error(json.message||'Request failed');
     return json; // caller accesses .data and .meta

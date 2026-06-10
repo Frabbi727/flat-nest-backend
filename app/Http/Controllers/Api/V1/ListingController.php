@@ -43,7 +43,7 @@ class ListingController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        return ApiResponse::success(new ListingResource($this->listings->getById($id)));
+        return ApiResponse::success(new ListingResource($this->listings->getById($id, auth()->id())));
     }
 
     /**

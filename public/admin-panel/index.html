@@ -89,6 +89,7 @@ function Icon({name,size=18,style:s}){
     case 'ok':       return<svg {...p}><circle cx="10" cy="10" r="7.5"/><path d="m6.8 10 2.2 2.2 4.2-4.4"/></svg>;
     case 'edit':     return<svg {...p}><path d="M13.5 3.5 16.5 6.5 7 16H4v-3l9.5-9.5Z"/></svg>;
     case 'save':     return<svg {...p}><path d="M4 4h9l3 3v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"/><path d="M14 4v4H6V4M7 13h6"/></svg>;
+    case 'banners':  return<svg {...p}><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M2 9h16M6 4v5M14 4v5"/></svg>;
     case 'device':   return<svg {...p}><rect x="5" y="2" width="10" height="16" rx="1.5"/><line x1="10" y1="15" x2="10" y2="15.5"/></svg>;
     default: return null;
   }
@@ -617,6 +618,7 @@ function Sidebar({th,page,setPage,counts,user}){
     {id:'dashboard', label:'Dashboard', icon:'home'},
     {id:'approvals', label:'Approvals',  icon:'approve', badge:counts.pending},
     {id:'listings',  label:'Listings',   icon:'listing',  badge:counts.listings},
+    {id:'banners',   label:'Banners',    icon:'banners'},
     {id:'users',     label:'Users',      icon:'users',    badge:counts.users},
     {id:'sessions',  label:'Sessions',   icon:'device'},
     {id:'analytics', label:'Analytics',  icon:'chart'},
@@ -1712,6 +1714,214 @@ function PageAnalytics({th,api}){
   );
 }
 
+// ─── banners page ───────────────────────────────────────────────
+function PageBanners({th,api}){
+  const toast=useToast();
+  const[rows,setRows]=React.useState([]);
+  const[loading,setLoading]=React.useState(true);
+  const[editTarget,setEditTarget]=React.useState(null);
+  const[detailTarget,setDetailTarget]=React.useState(null);
+  const[acting,setActing]=React.useState(null);
+
+  const load=()=>{
+    setLoading(true);
+    api.get('/admin/banners').then(r=>{setRows(r.data||[]);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  };
+  React.useEffect(()=>{load();},[]);
+
+  const save=async(f)=>{
+    const id=editTarget?.id;
+    setActing(id?'e':'s');
+    try{
+      if(id) await api.patch(`/admin/banners/${id}`,f);
+      else await api.post('/admin/banners',f);
+      toast(`Banner ${id?'updated':'created'}.`,'success');
+      setEditTarget(null); load();
+    }catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  const del=async id=>{
+    if(!confirm('Delete this banner and all its images?'))return;
+    try{await api.del(`/admin/banners/${id}`);toast('Banner deleted.','info');load();}
+    catch(e){toast(e.message,'error');}
+  };
+
+  const toggleStatus=async b=>{
+    setActing(b.id+'t');
+    try{
+      await api.patch(`/admin/banners/${b.id}`,{is_active:!b.is_active});
+      toast(`Banner ${!b.is_active?'activated':'deactivated'}.`,'success');
+      load();
+    }catch(e){toast(e.message,'error');}
+    setActing(null);
+  };
+
+  if(detailTarget) return <PageBannerDetail th={th} api={api} bannerId={detailTarget.id} onBack={()=>setDetailTarget(null)}/>;
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      {editTarget&&<EditBannerModal th={th} banner={editTarget==='new'?null:editTarget} loading={acting==='e'||acting==='s'} onSave={save} onClose={()=>setEditTarget(null)}/>}
+      <div style={{display:'flex',alignItems:'center',gap:12}}>
+        <div>
+          <div style={{fontSize:15,fontWeight:700,color:th.ink}}>Banner Campaigns</div>
+          <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Manage promotional carousels for the home screen.</div>
+        </div>
+        <div style={{flex:1}}/>
+        <button onClick={()=>setEditTarget('new')} style={{height:38,padding:'0 16px',borderRadius:10,background:th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:7,cursor:'pointer',boxShadow:`0 4px 12px ${alpha(th.primary,.3)}`}}>
+          <Icon name="plus" size={16}/>Create New
+        </button>
+        <IBtn th={th} icon="refresh" title="Refresh" onClick={load}/>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:16}}>
+        {loading?[1,2].map(i=><Skeleton key={i} h={140}/>):
+          rows.map(b=>(
+            <Card key={b.id} th={th} pad={0} style={{overflow:'hidden',border:b.is_active?`1.5px solid ${th.primary}`:`1px solid ${th.border}`}}>
+              <div style={{padding:16}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,marginBottom:8}}>
+                  <div style={{fontSize:15,fontWeight:700,color:th.ink,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.title}</div>
+                  <button onClick={()=>toggleStatus(b)} disabled={acting===b.id+'t'} style={{background:b.is_active?th.successSoft:th.bgAlt,color:b.is_active?th.success:th.inkSoft,border:'none',padding:'4px 10px',borderRadius:20,fontSize:11,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:4}}>
+                    <span style={{width:6,height:6,borderRadius:'50%',background:b.is_active?th.success:th.inkSoft}}/>
+                    {b.is_active?'Active':'Inactive'}
+                  </button>
+                </div>
+                {b.description&&<div style={{fontSize:12.5,color:th.inkMid,lineHeight:1.4,marginBottom:12,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{b.description}</div>}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginTop:'auto'}}>
+                  <div style={{fontSize:11.5,color:th.inkSoft}}><Icon name="eye" size={11} style={{display:'inline',marginRight:4}}/>{b.images_count||0} images</div>
+                  <div style={{display:'flex',gap:6}}>
+                    <IBtn th={th} icon="edit" tone="primary" title="Edit campaign" onClick={()=>setEditTarget(b)}/>
+                    <button onClick={()=>setDetailTarget(b)} style={{height:30,padding:'0 12px',borderRadius:8,background:th.bgAlt,border:`1px solid ${th.border}`,color:th.inkMid,fontSize:12,fontWeight:600,cursor:'pointer'}}>Manage Images</button>
+                    <IBtn th={th} icon="trash" tone="danger" title="Delete" onClick={()=>del(b.id)}/>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))
+        }
+        {!loading&&rows.length===0&&<div style={{gridColumn:'1/-1',padding:'40px 0',textAlign:'center',color:th.inkSoft,fontSize:14}}>No banners created yet.</div>}
+      </div>
+    </div>
+  );
+}
+
+function EditBannerModal({th,banner,loading,onSave,onClose}){
+  const[f,setF]=React.useState({title:banner?.title||'',description:banner?.description||'',is_active:banner?.is_active||false});
+  const set=(k,v)=>setF(p=>({...p,[k]:v}));
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20,backdropFilter:'blur(2px)'}}>
+      <div style={{animation:'fadeIn .2s ease',width:'100%',maxWidth:440}}>
+        <Card th={th}>
+          <div style={{fontSize:16,fontWeight:700,color:th.ink,marginBottom:20}}>{banner?'Edit Banner':'New Banner'}</div>
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            <Field label="Title" th={th}><Input value={f.title} onChange={v=>set('title',v)} placeholder="e.g. Summer Sale 2026" th={th} required/></Field>
+            <Field label="Description" th={th}><textarea value={f.description} onChange={e=>set('description',e.target.value)} placeholder="Short marketing text…" style={{width:'100%',height:80,padding:'10px 12px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.surface,color:th.ink,fontSize:13.5,resize:'none'}} /></Field>
+            <label style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.bgAlt,cursor:'pointer'}}>
+              <input type="checkbox" checked={f.is_active} onChange={e=>set('is_active',e.target.checked)} style={{width:16,height:16,accentColor:th.primary}}/>
+              <div style={{fontSize:13.5,fontWeight:500,color:th.ink}}>Set as Active Campaign</div>
+            </label>
+          </div>
+          <div style={{display:'flex',gap:8,marginTop:20}}>
+            <button onClick={()=>onSave(f)} disabled={loading} style={{flex:1,height:40,borderRadius:10,background:th.primary,color:'#fff',border:'none',fontWeight:600,fontSize:13.5,cursor:loading?'default':'pointer',opacity:loading?.7:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+              {loading?<Icon name="spin" size={14}/>:<Icon name="save" size={14}/>}Save Banner
+            </button>
+            <button onClick={onClose} style={{flex:1,height:40,borderRadius:10,background:th.bgAlt,color:th.inkMid,border:`1.5px solid ${th.border}`,fontWeight:600,fontSize:13.5,cursor:'pointer'}}>Cancel</button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function PageBannerDetail({th,api,bannerId,onBack}){
+  const toast=useToast();
+  const[data,setData]=React.useState(null);
+  const[loading,setLoading]=React.useState(true);
+  const[uploading,setUploading]=React.useState(false);
+
+  const load=()=>{
+    setLoading(true);
+    api.get(`/admin/banners/${bannerId}`).then(r=>{setData(r.data);setLoading(false);}).catch(e=>{toast(e.message,'error');setLoading(false);});
+  };
+  React.useEffect(()=>{load();},[bannerId]);
+
+  const handleUpload=async(e)=>{
+    const file=e.target.files[0]; if(!file)return;
+    if(data.images.length>=5)return toast('Maximum 5 images allowed.','warn');
+    
+    setUploading(true);
+    const fd=new FormData(); fd.append('image',file);
+    try{
+      await api.post(`/admin/banners/${bannerId}/images`,fd);
+      toast('Image uploaded and compressed.','success'); load();
+    }catch(e){toast(e.message,'error');}
+    setUploading(false);
+  };
+
+  const delImg=async id=>{
+    if(!confirm('Delete this image?'))return;
+    try{await api.del(`/admin/banners/images/${id}`);toast('Image deleted.','info');load();}
+    catch(e){toast(e.message,'error');}
+  };
+
+  const updateImg=async(id,f)=>{
+    try{await api.patch(`/admin/banners/images/${id}`,f);toast('Image updated.','success');load();}
+    catch(e){toast(e.message,'error');}
+  };
+
+  if(loading) return <div style={{padding:28}}><Skeleton h={40} w={200}/><Skeleton h={200} style={{marginTop:20}}/></div>;
+
+  return(
+    <div style={{padding:28,display:'flex',flexDirection:'column',gap:16}}>
+      <div style={{display:'flex',alignItems:'center',gap:14}}>
+        <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:5,padding:'7px 14px',borderRadius:9,border:`1.5px solid ${th.border}`,background:th.surface,color:th.inkMid,cursor:'pointer',fontSize:13,fontWeight:500}}><Icon name="chevLeft" size={14}/>Back</button>
+        <div style={{fontSize:18,fontWeight:700,color:th.ink}}>{data.title}</div>
+      </div>
+
+      <Card th={th}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+          <div>
+            <div style={{fontSize:15,fontWeight:700,color:th.ink}}>Banner Images</div>
+            <div style={{fontSize:12,color:th.inkSoft,marginTop:3}}>Max 5 images. Each image will be compressed below 200KB.</div>
+          </div>
+          <label style={{height:36,padding:'0 16px',borderRadius:9,background:th.primary,color:'#fff',fontWeight:600,fontSize:13,display:'flex',alignItems:'center',gap:6,cursor:uploading?'default':'pointer',opacity:uploading?.7:1}}>
+            {uploading?<Icon name="spin" size={14}/>:<Icon name="plus" size={14}/>}Add Image
+            <input type="file" hidden accept="image/*" onChange={handleUpload} disabled={uploading}/>
+          </label>
+        </div>
+
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          {data.images.map(img=>(
+            <div key={img.id} style={{display:'grid',gridTemplateColumns:'120px 1fr auto',gap:16,padding:12,borderRadius:12,border:`1px solid ${th.borderSoft}`,background:th.bgAlt}}>
+              <img src={img.image_url} style={{width:'100%',height:68,borderRadius:8,objectFit:'cover',background:th.border}}/>
+              <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:11,fontWeight:700,color:th.inkFaint}}>TARGET URL</span>
+                  <input value={img.target_url||''} onChange={e=>updateImg(img.id,{target_url:e.target.value})} placeholder="https://…" style={{flex:1,background:th.surface,border:`1px solid ${th.border}`,borderRadius:6,padding:'3px 8px',fontSize:12,color:th.ink}}/>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:20}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                    <span style={{fontSize:11,fontWeight:700,color:th.inkFaint}}>ORDER</span>
+                    <input type="number" value={img.order} onChange={e=>updateImg(img.id,{order:parseInt(e.target.value)||0})} style={{width:50,background:th.surface,border:`1px solid ${th.border}`,borderRadius:6,padding:'3px 6px',fontSize:12,color:th.ink}}/>
+                  </div>
+                  <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}>
+                    <input type="checkbox" checked={img.is_active} onChange={e=>updateImg(img.id,{is_active:e.target.checked})} style={{accentColor:th.success}}/>
+                    <span style={{fontSize:12,color:th.inkMid}}>Visible</span>
+                  </label>
+                </div>
+              </div>
+              <div style={{display:'flex',alignItems:'center'}}>
+                <IBtn th={th} icon="trash" tone="danger" title="Delete image" onClick={()=>delImg(img.id)}/>
+              </div>
+            </div>
+          ))}
+          {data.images.length===0&&<div style={{textAlign:'center',padding:'30px 0',color:th.inkSoft,fontSize:13}}>No images uploaded yet.</div>}
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 // ─── app root ────────────────────────────────────────────────────
 function App(){
   const[token,setToken]=React.useState(()=>localStorage.getItem('fn_token')||'');
@@ -1770,6 +1980,7 @@ function App(){
     approvals:       {title:'Approvals',        crumb:'Listings · Pending review'},
     listings:        {title:'Listings',          crumb:'Listings · All'},
     'listing-detail':{title:'Listing Details',  crumb:'Listings · Detail'},
+    banners:         {title:'Banners',           crumb:'Marketing · Campaigns'},
     users:           {title:'Users',             crumb:'People · All'},
     sessions:        {title:'Sessions',          crumb:'People · Login history'},
     analytics:       {title:'Analytics',         crumb:'Insights · Last 14 days'},
@@ -1781,6 +1992,7 @@ function App(){
     approvals:<PageApprovals th={th} api={api}/>,
     listings: <PageListings  th={th} api={api} onViewDetail={viewDetail} metaTypes={metaTypes} metaFacings={metaFacings}/>,
     'listing-detail':detailId?<PageListingDetail th={th} api={api} listingId={detailId} onBack={backToListings} metaTypes={metaTypes} metaFacings={metaFacings}/>:null,
+    banners:  <PageBanners   th={th} api={api}/>,
     users:    <PageUsers     th={th} api={api}/>,
     sessions: <PageSessions  th={th} api={api}/>,
     analytics:<PageAnalytics th={th} api={api}/>,

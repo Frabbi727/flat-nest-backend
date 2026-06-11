@@ -91,7 +91,7 @@ class AuthService
             }
         }
 
-        $step = $user->is_complete ? 3 : ($user->role ? 2 : 1);
+        $step = $this->resolveStep($user);
 
         return $this->tokenResponse($user, registrationStep: $step, ip: $ip);
     }
@@ -108,7 +108,7 @@ class AuthService
             throw new UnauthorizedHttpException('', 'Invalid credentials');
         }
 
-        $step = $user->is_complete ? 3 : ($user->role ? 2 : 1);
+        $step = $this->resolveStep($user);
 
         return $this->tokenResponse($user, registrationStep: $step, ip: $ip);
     }
@@ -182,6 +182,14 @@ class AuthService
         ];
 
         return $response;
+    }
+
+    private function resolveStep(User $user): int
+    {
+        if ($user->is_complete) return 3;
+        if (! $user->phone)     return 1; // Google user — needs phone + password
+        if (! $user->role)      return 1; // has phone but no role — needs role selection
+        return 2;                          // has phone + role — needs avatar
     }
 
     private function userArray(User $user): array

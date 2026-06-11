@@ -26,28 +26,30 @@ class AuthService
             'phone'         => $data['phone'],
         ]);
 
-        return $this->tokenResponse($user, registrationStep: 2, ip: $ip);
+        return $this->tokenResponse($user, registrationStep: 1, ip: $ip);
     }
 
-    public function updateDetails(User $user, array $data): User
+    public function updateDetails(User $user, array $data): array
     {
         if ($user->is_complete && $user->role !== $data['role']) {
             throw new ConflictHttpException('Your account role is already set and cannot be changed.');
         }
 
-        return $this->users->update($user, [
+        $user = $this->users->update($user, [
             'role' => $data['role'],
         ]);
+
+        return ['user' => $this->userArray($user), 'registration_step' => 2];
     }
 
-    public function updateAvatar(User $user, mixed $file): string
+    public function updateAvatar(User $user, mixed $file): array
     {
         $path = Storage::disk('public')->put('avatars', $file);
         $url  = Storage::disk('public')->url($path);
 
-        $this->users->update($user, ['avatar_url' => $url, 'is_complete' => true]);
+        $user = $this->users->update($user, ['avatar_url' => $url, 'is_complete' => true]);
 
-        return $url;
+        return ['user' => $this->userArray($user->fresh()), 'registration_step' => 3];
     }
 
     public function googleSignIn(string $idToken, ?string $ip = null): array
@@ -79,7 +81,7 @@ class AuthService
             }
         }
 
-        $step = $user->is_complete ? 3 : 2;
+        $step = $user->is_complete ? 3 : ($user->role ? 2 : 1);
 
         return $this->tokenResponse($user, registrationStep: $step, ip: $ip);
     }
@@ -96,7 +98,9 @@ class AuthService
             throw new UnauthorizedHttpException('', 'Invalid credentials');
         }
 
-        return $this->tokenResponse($user, ip: $ip);
+        $step = $user->is_complete ? 3 : ($user->role ? 2 : 1);
+
+        return $this->tokenResponse($user, registrationStep: $step, ip: $ip);
     }
 
     public function deleteAccount(User $user): void
@@ -161,25 +165,27 @@ class AuthService
         ]);
 
         $response = [
-            'access_token'  => $accessToken,
-            'refresh_token' => $refreshToken,
-            'user'          => [
-                'id'            => $user->id,
-                'name'          => $user->name,
-                'email'         => $user->email,
-                'phone'         => $user->phone,
-                'role'          => $user->role,
-                'date_of_birth' => $user->date_of_birth,
-                'avatar_url'    => $user->avatar_url,
-                'is_complete'   => $user->is_complete,
-            ],
+            'access_token'      => $accessToken,
+            'refresh_token'     => $refreshToken,
+            'registration_step' => $registrationStep,
+            'user'              => $this->userArray($user),
         ];
 
-        if ($registrationStep !== null) {
-            $response['registration_step'] = $registrationStep;
-        }
-
         return $response;
+    }
+
+    private function userArray(User $user): array
+    {
+        return [
+            'id'            => $user->id,
+            'name'          => $user->name,
+            'email'         => $user->email,
+            'phone'         => $user->phone,
+            'role'          => $user->role,
+            'date_of_birth' => $user->date_of_birth,
+            'avatar_url'    => $user->avatar_url,
+            'is_complete'   => $user->is_complete,
+        ];
     }
 
     private function issueRefreshToken(User $user): string

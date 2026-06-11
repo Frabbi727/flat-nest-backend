@@ -28,8 +28,8 @@ class AuthController extends Controller
     public function registerDetails(RegisterDetailsRequest $request): JsonResponse
     {
         try {
-            $this->auth->updateDetails($request->user(), $request->validated());
-            return ApiResponse::success(['registration_step' => 3], 'Details saved');
+            $data = $this->auth->updateDetails($request->user(), $request->validated());
+            return ApiResponse::success($data, 'Details saved');
         } catch (ConflictHttpException $e) {
             return ApiResponse::error($e->getMessage(), 'ROLE_LOCKED', 409);
         }
@@ -37,8 +37,8 @@ class AuthController extends Controller
 
     public function registerAvatar(RegisterAvatarRequest $request): JsonResponse
     {
-        $url = $this->auth->updateAvatar($request->user(), $request->file('avatar'));
-        return ApiResponse::success(['avatar_url' => $url], 'Registration complete');
+        $data = $this->auth->updateAvatar($request->user(), $request->file('avatar'));
+        return ApiResponse::success($data, 'Registration complete');
     }
 
     public function googleSignIn(GoogleAuthRequest $request): JsonResponse

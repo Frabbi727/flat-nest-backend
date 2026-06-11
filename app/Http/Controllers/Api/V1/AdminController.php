@@ -440,7 +440,6 @@ class AdminController extends Controller
         $request->validate([
             'image'      => 'required|image|max:10240', // 10MB raw limit
             'target_url' => 'nullable|url',
-            'order'      => 'nullable|integer',
         ]);
 
         try {
@@ -449,7 +448,7 @@ class AdminController extends Controller
             $bannerImage = $banner->images()->create([
                 'image_path' => $path,
                 'target_url' => $request->target_url,
-                'order'      => $request->order ?? 0,
+                'order'      => ($banner->images()->max('order') ?? 0) + 1,
                 'is_active'  => true,
             ]);
 

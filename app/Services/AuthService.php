@@ -29,6 +29,16 @@ class AuthService
         return $this->tokenResponse($user, registrationStep: 1, ip: $ip);
     }
 
+    public function updateBasicInfo(User $user, array $data): array
+    {
+        $user = $this->users->update($user, [
+            'phone'         => $data['phone'],
+            'password_hash' => Hash::make($data['password']),
+        ]);
+
+        return ['user' => $this->userArray($user), 'registration_step' => 1];
+    }
+
     public function updateDetails(User $user, array $data): array
     {
         if ($user->is_complete && $user->role !== $data['role']) {

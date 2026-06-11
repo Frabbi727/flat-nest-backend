@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
         // Auth
         Route::post  ('/auth/logout',          [AuthController::class, 'logout']);
         Route::delete('/auth/account',         [AuthController::class, 'deleteAccount']);
+        Route::patch ('/auth/register/basic',   [AuthController::class, 'registerBasic']);
         Route::patch ('/auth/register/details', [AuthController::class, 'registerDetails']);
         Route::patch ('/auth/register/avatar',  [AuthController::class, 'registerAvatar']);
 

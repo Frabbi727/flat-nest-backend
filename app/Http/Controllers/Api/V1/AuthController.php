@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\GoogleAuthRequest;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RefreshTokenRequest;
 use App\Http\Requests\Auth\RegisterAvatarRequest;
+use App\Http\Requests\Auth\RegisterBasicRequest;
 use App\Http\Requests\Auth\RegisterDetailsRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Services\AuthService;
@@ -23,6 +24,12 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         return ApiResponse::success($this->auth->register($request->validated(), $request->ip()), null, 201);
+    }
+
+    public function registerBasic(RegisterBasicRequest $request): JsonResponse
+    {
+        $data = $this->auth->updateBasicInfo($request->user(), $request->validated());
+        return ApiResponse::success($data, 'Basic info saved');
     }
 
     public function registerDetails(RegisterDetailsRequest $request): JsonResponse
